@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URL=mongodb://mongo:27017
+      - MONGO_DB_NAME=research_assistant
+      - REDIS_URL=redis://redis:6379/0
+      # Placeholders for future integration
+      - VECTOR_DB_URL=http://qdrant:6333
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    depends_on:
+      - mongo
+      - redis
+    volumes:
+      - ../src:/app/src
+
+  worker:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    command: celery -A src.workers.celery_app worker --loglevel=info
+    environment:
+      - MONGO_URL=mongodb://mongo:27017
+      - MONGO_DB_NAME=research_assistant
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - mongo
+      - redis
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      # No auth for dev, add MONGO_INITDB_ROOT_USERNAME/PASSWORD for prod
+      - MONGO_INITDB_DATABASE=research_assistant
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  # Placeholder services (commented out until needed)
+  # qdrant:
+  #   image: qdrant/qdrant
+  #   ports:
+  #     - "6333:6333"
+  #   volumes:
+  #     - qdrant_data:/qdrant/storage
+
+  # elasticsearch:
+  #   image: elasticsearch:8.11.0
+  #   ports:
+  #     - "9200:9200"
+  #   environment:
+  #     - discovery.type=single-node
+  #     - xpack.security.enabled=false
+  #   volumes:
+  #     - elastic_data:/usr/share/elasticsearch/data
+
+volumes:
+  mongo_data:
+  # qdrant_data:
+  # elastic_data:

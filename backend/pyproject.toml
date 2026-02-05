@@ -1,0 +1,53 @@
+[tool.poetry]
+name = "research-assistant-backend"
+version = "0.1.0"
+description = "AI Research Assistant Backend"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.109.0"
+uvicorn = "^0.27.0"
+pydantic = "^2.6.0"
+pydantic-settings = "^2.1.0"
+motor = "^3.3.2"
+celery = {extras = ["redis"], version = "^5.3.6"}
+redis = "^5.0.1"
+# Placeholders for future vector/search integration
+# qdrant-client = "^1.7.0"
+# elasticsearch = "^8.11.0"
+google-generativeai = "^0.3.2"
+openai = "^1.10.0"
+arxiv = "^2.1.0"
+biopython = "^1.83"
+typer = "^0.9.0"
+structlog = "^24.1.0"
+httpx = "^0.26.0"
+sentence-transformers = "^2.3.1"
+scikit-learn = "^1.4.0"
+spacy = "^3.7.2"
+python-multipart = "^0.0.6"
+python-dotenv = "^1.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+pytest-asyncio = "^0.23.4"
+pytest-mock = "^3.12.0"
+ruff = "^0.1.15"
+black = "^24.1.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --asyncio-mode=auto"
+testpaths = [
+    "tests",
+]
+pythonpath = [
+    "."
+]
