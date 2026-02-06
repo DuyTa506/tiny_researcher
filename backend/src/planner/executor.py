@@ -20,6 +20,7 @@ from src.core.schema import ResearchPlan, ResearchStep
 from src.core.models import Paper
 from src.tools import execute_tool, get_tool
 from src.tools.registry import ToolNotFoundError, ToolExecutionError
+from src.tools.cache_manager import ToolCacheManager
 
 logger = logging.getLogger(__name__)
 
@@ -54,31 +55,52 @@ class StepResult:
         return None
 
 
-@dataclass  
+@dataclass
 class ExecutionProgress:
     """Track overall execution progress with quality metrics."""
     total_steps: int
     current_step: int = 0
     completed_steps: List[int] = field(default_factory=list)
     failed_steps: List[int] = field(default_factory=list)
-    
+
     # Quality metrics
     total_papers_collected: int = 0
     unique_papers: int = 0
     duplicates_removed: int = 0
     papers_by_source: Dict[str, int] = field(default_factory=dict)
-    
+
+    # Enhanced metrics (Phase 1-2)
+    high_relevance_papers: int = 0  # Score >= 8
+    relevance_bands: Dict[str, int] = field(default_factory=dict)  # "3-5", "6-7", "8-10"
+    cache_hits: int = 0
+    cache_misses: int = 0
+    total_duration_seconds: float = 0.0
+
     @property
     def is_complete(self) -> bool:
         return len(self.completed_steps) + len(self.failed_steps) >= self.total_steps
-    
+
     @property
     def success_rate(self) -> float:
         total = len(self.completed_steps) + len(self.failed_steps)
         if total == 0:
             return 0.0
         return len(self.completed_steps) / total
-    
+
+    @property
+    def cache_hit_rate(self) -> float:
+        total = self.cache_hits + self.cache_misses
+        if total == 0:
+            return 0.0
+        return self.cache_hits / total
+
+    @property
+    def avg_step_duration(self) -> float:
+        total = len(self.completed_steps) + len(self.failed_steps)
+        if total == 0:
+            return 0.0
+        return self.total_duration_seconds / total
+
     def add_step_result(self, result: StepResult):
         """Update metrics from step result."""
         if result.status == StepStatus.COMPLETED:
@@ -86,7 +108,17 @@ class ExecutionProgress:
             self.total_papers_collected += result.unique_count + result.duplicates_removed
             self.unique_papers += result.unique_count
             self.duplicates_removed += result.duplicates_removed
-            
+
+            # Track cache usage
+            if result.from_cache:
+                self.cache_hits += 1
+            else:
+                self.cache_misses += 1
+
+            # Track duration
+            if result.duration_seconds:
+                self.total_duration_seconds += result.duration_seconds
+
             if result.tool_used:
                 self.papers_by_source[result.tool_used] = \
                     self.papers_by_source.get(result.tool_used, 0) + result.unique_count
@@ -175,16 +207,23 @@ class PlanExecutor:
     deduplicating results, and tracking quality metrics.
     """
     
-    def __init__(self, on_step_complete: callable = None, plan_id: str = None):
+    def __init__(
+        self,
+        on_step_complete: callable = None,
+        plan_id: str = None,
+        cache_manager: ToolCacheManager = None
+    ):
         """
         Initialize executor.
-        
+
         Args:
             on_step_complete: Optional callback after each step
             plan_id: Research plan ID (for MongoDB association)
+            cache_manager: Optional tool cache manager
         """
         self.on_step_complete = on_step_complete
         self.plan_id = plan_id
+        self.cache_manager = cache_manager
         self._current_progress: Optional[ExecutionProgress] = None
         self._results: Dict[int, StepResult] = {}
         self._deduplicator = PaperDeduplicator()
@@ -251,16 +290,29 @@ class PlanExecutor:
         try:
             if step.tool:
                 result.tool_used = step.tool
-                
+
                 # Verify tool exists
                 tool_def = get_tool(step.tool)
                 if not tool_def:
                     raise ToolNotFoundError(step.tool)
-                
-                # Execute tool
-                logger.info(f"Executing tool: {step.tool}", extra={"args": step.tool_args})
-                raw_results = await execute_tool(step.tool, **step.tool_args)
-                
+
+                # Check cache first
+                raw_results = None
+                if self.cache_manager:
+                    raw_results = await self.cache_manager.get(step.tool, **step.tool_args)
+                    if raw_results:
+                        result.from_cache = True
+                        logger.info(f"Cache HIT for tool: {step.tool}")
+
+                # Execute tool if not cached
+                if raw_results is None:
+                    logger.info(f"Executing tool: {step.tool}", extra={"args": step.tool_args})
+                    raw_results = await execute_tool(step.tool, **step.tool_args)
+
+                    # Cache the result
+                    if self.cache_manager:
+                        await self.cache_manager.set(step.tool, raw_results, **step.tool_args)
+
                 # Normalize to list
                 if not isinstance(raw_results, list):
                     raw_results = [raw_results]
