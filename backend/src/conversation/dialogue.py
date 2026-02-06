@@ -127,8 +127,14 @@ class DialogueManager:
 
         context.add_user_message(user_message)
 
-        # Classify intent
-        intent_result = self.intent_classifier.classify(user_message)
+        # Build context hint for intent classification based on current state
+        state_context = self._get_state_context(context)
+
+        # Classify intent using LLM with state context
+        intent_result = await self.intent_classifier.classify_with_llm(
+            user_message,
+            context=state_context
+        )
         logger.info(f"Intent: {intent_result.intent.value}")
 
         # Handle based on state
@@ -138,6 +144,21 @@ class DialogueManager:
         await self.store.save(context)
 
         return response
+
+    def _get_state_context(self, context: ConversationContext) -> str:
+        """Get context hint for intent classification based on current state."""
+        state = context.state
+
+        if state == DialogueState.REVIEWING:
+            return "User was just shown a research plan and asked 'Proceed with this plan? (yes/no/edit)'"
+        elif state == DialogueState.CLARIFYING:
+            return "User was asked clarifying questions about their research topic"
+        elif state == DialogueState.EXECUTING:
+            return "Research is currently being executed"
+        elif state == DialogueState.COMPLETE:
+            return "Research just completed, user might want to start a new topic"
+        else:
+            return ""
 
     async def _handle_message(
         self,
@@ -320,17 +341,15 @@ class DialogueManager:
         # Analyze the query
         clarification = await self.clarifier.analyze(topic)
 
-        # Add memory context to clarification if available
-        if memory_context.has_relevant_history:
-            memory_hint = memory_context.to_prompt_context()
-            if memory_hint:
-                clarification.understanding += f"\n\n{memory_hint}"
+        # Note: Don't append memory context to clarification.understanding
+        # as it causes nested history in stored sessions. Memory context is
+        # shown separately in the clarification message.
 
         if clarification.needs_clarification and not should_skip:
             # Store clarification context
             context.pending_clarification = {
                 "original_query": clarification.original_query,
-                "understanding": clarification.understanding,
+                "understanding": clarification.understanding,  # Keep clean
                 "sub_queries": clarification.sub_queries,
                 "questions": clarification.questions,
                 "memory_context": memory_context.to_prompt_context(),
@@ -450,11 +469,13 @@ class DialogueManager:
             context.result_summary = self._format_result(result)
 
             # Record successful session to episodic memory
+            # Use original_query for topic to avoid nested history in summaries
+            original_query = context.current_request.topic if context.current_request else ""
             await self.memory.record_session(
                 user_id=user_id,
                 session_id=result.session_id,
-                topic=context.current_topic or "",
-                original_query=context.current_request.topic,
+                topic=original_query,  # Use clean original query, not enriched topic
+                original_query=original_query,
                 papers_found=result.unique_papers,
                 relevant_papers=result.relevant_papers,
                 high_relevance_papers=result.high_relevance_papers,
@@ -466,7 +487,7 @@ class DialogueManager:
             # Learn from this interaction
             await self.memory.learn_from_interaction(
                 user_id=user_id,
-                topic=context.current_topic or "",
+                topic=original_query,
                 sources=getattr(result, 'sources_used', [])
             )
 
@@ -483,12 +504,13 @@ class DialogueManager:
             duration = time.time() - start_time
             logger.error(f"Execution failed: {e}")
 
-            # Record failed session
+            # Record failed session - use original query for clean topic
+            original_query = context.current_request.topic if context.current_request else ""
             await self.memory.record_session(
                 user_id=user_id,
                 session_id=context.conversation_id,
-                topic=context.current_topic or "",
-                original_query=context.current_request.topic if context.current_request else "",
+                topic=original_query,  # Use clean original query
+                original_query=original_query,
                 outcome=SessionOutcome.FAILED,
                 duration_seconds=duration
             )
