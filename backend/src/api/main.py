@@ -1,6 +1,7 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from src.core.config import settings
-from src.api.routes import sources, planner
+from src.api.routes import sources, planner, conversation, websocket
 import logging
 
 logger = logging.getLogger(__name__)
@@ -11,8 +12,19 @@ app = FastAPI(
     description="Backend API for AI Research Assistant"
 )
 
+# CORS middleware for frontend integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(sources.router, prefix="/api/v1/sources", tags=["Sources"])
 app.include_router(planner.router, prefix="/api/v1/plan", tags=["Planner"])
+app.include_router(conversation.router, prefix="/api/v1/conversations", tags=["Conversations"])
+app.include_router(websocket.router, prefix="/api/v1/ws", tags=["WebSocket"])
 
 @app.on_event("startup")
 async def startup():

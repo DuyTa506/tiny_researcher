@@ -42,6 +42,7 @@ class Paper(BaseModel):
     source: str = "arxiv"  # arxiv, huggingface, url
     url: Optional[str] = None
     pdf_url: Optional[str] = None
+    full_text: Optional[str] = None  # Full PDF text content
     
     # Processing results
     status: PaperStatus = PaperStatus.RAW

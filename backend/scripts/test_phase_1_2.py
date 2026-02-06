@@ -37,6 +37,35 @@ class MockLLMClient(LLMClientInterface):
 
     async def generate(self, prompt: str, json_mode: bool = False, **kwargs) -> str:
         """Generate a mock response."""
+        if "research plan" in prompt.lower() or "available_tools" in prompt.lower():
+            # Mock plan generation
+            return '''{
+                "topic": "Transformer Models in NLP",
+                "summary": "Comprehensive research on transformer architectures",
+                "steps": [
+                    {
+                        "id": 1,
+                        "action": "research",
+                        "title": "Search arXiv for transformer papers",
+                        "description": "Find recent papers on transformers",
+                        "queries": ["transformer architecture", "BERT"],
+                        "sources": ["arxiv"],
+                        "tool": "arxiv_search",
+                        "tool_args": {"query": "transformer architecture", "max_results": 5}
+                    },
+                    {
+                        "id": 2,
+                        "action": "research",
+                        "title": "Check Hugging Face trending",
+                        "description": "Find trending transformer models",
+                        "queries": [],
+                        "sources": ["huggingface"],
+                        "tool": "hf_trending",
+                        "tool_args": {"query": ""}
+                    }
+                ]
+            }'''
+
         if "relevance" in prompt.lower() or "score" in prompt.lower():
             # Mock relevance scoring
             return '{"papers": [{"paper_id": 0, "score": 8.5, "reasoning": "Highly relevant"}]}'
@@ -144,6 +173,8 @@ async def test_pipeline():
             await pipeline.cache_manager.close()
         if pipeline.memory_manager:
             await pipeline.memory_manager.close()
+        if hasattr(pipeline, 'vector_service') and pipeline.vector_service:
+            pipeline.vector_service.close()
 
 
 if __name__ == "__main__":

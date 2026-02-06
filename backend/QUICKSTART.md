@@ -1,14 +1,106 @@
-# Quick Start Guide - Phase 1-2
+# Quick Start Guide - Research Assistant v3.4
 
-## Prerequisites
+## 🚀 Quick Start (Docker - Recommended)
 
-1. **Python 3.11+**
-2. **Docker** (for MongoDB and Redis)
-3. **Poetry** (for dependency management)
+**One command to start everything:**
 
-## Setup
+```bash
+# Navigate to project
+cd /home/duy/Downloads/duy_dev/tiny_researcher/backend
 
-### 1. Start Services
+# Add your API key to .env
+echo "OPENAI_API_KEY=your_key_here" > .env
+
+# Start all services
+docker compose -f docker/docker-compose.yml up -d
+
+# Or use Makefile shortcut
+make up
+```
+
+**Access:**
+- API Documentation: http://localhost:8000/docs
+- Health Check: http://localhost:8000/health
+
+See [DOCKER.md](DOCKER.md) for complete Docker guide.
+
+---
+
+## Manual Installation
+
+### Prerequisites
+
+- Python 3.10+
+- MongoDB 7.0+ (or use Docker)
+- Redis 7.0+ (or use Docker)
+- OpenAI or Gemini API key
+
+## Installation
+
+### Option 1: Using pip (Recommended)
+
+```bash
+# 1. Clone and navigate to the project
+cd /home/duy/Downloads/duy_dev/tiny_researcher/backend
+
+# 2. Create virtual environment
+python3 -m venv .venv
+
+# 3. Activate virtual environment
+source .venv/bin/activate
+
+# 4. Install dependencies
+pip install -r requirements.txt
+
+# 5. (Optional) Install development dependencies
+pip install -r requirements-dev.txt
+```
+
+### Option 2: Using uv (Faster)
+
+```bash
+# 1. Install uv if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2. Navigate to project
+cd /home/duy/Downloads/duy_dev/tiny_researcher/backend
+
+# 3. Create virtual environment and install
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+
+# 4. (Optional) Install development dependencies
+uv pip install -r requirements-dev.txt
+```
+
+## Configuration
+
+```bash
+# 1. Create .env file (if not exists)
+cat > .env << 'EOF'
+# LLM API Keys (at least one required)
+OPENAI_API_KEY=your_openai_key_here
+GEMINI_API_KEY=your_gemini_key_here
+
+# Database
+MONGO_URL=mongodb://localhost:27017
+MONGO_DB_NAME=research_assistant
+
+# Cache
+REDIS_URL=redis://localhost:6379/0
+
+# App Settings
+ENVIRONMENT=development
+PROJECT_NAME="Research Assistant"
+VERSION=3.4.0
+EOF
+
+# 2. Edit .env and add your actual API keys
+nano .env
+```
+
+## Start Services
 
 ```bash
 # Start MongoDB
@@ -21,259 +113,384 @@ docker run -d -p 6379:6379 --name redis redis:7
 docker ps
 ```
 
-### 2. Install Dependencies
+## Run the Application
+
+### Option 1: CLI Mode
 
 ```bash
-# Activate virtual environment (Windows)
-.\venv\Scripts\Activate.ps1
+# Activate environment
+source .venv/bin/activate
 
-# Or create new venv
-python -m venv venv
-.\venv\Scripts\Activate.ps1
+# Load environment variables
+export $(grep -v '^#' .env | xargs)
 
-# Install dependencies
-poetry install
+# Run CLI
+python research_cli.py
+
+# Options:
+# --mock              Use mock LLM (no API key needed)
+# --user USER_ID      Set custom user ID
 ```
 
-### 3. Configure Environment
+**CLI Commands:**
+| Command | Description |
+|---------|-------------|
+| `<topic>` | Start research on a topic |
+| `ok` / `yes` | Confirm and proceed |
+| `cancel` | Cancel current operation |
+| `add <text>` | Add to plan |
+| `remove <text>` | Remove from plan |
+| `/ask <question>` | Ask LLM with streaming |
+| `/explain <topic>` | Explain topic with streaming |
+| `help` | Show help |
+| `quit` | Exit application |
+
+### Option 2: API Mode
 
 ```bash
-# Copy example env
-cp .env.example .env
+# Activate environment
+source .venv/bin/activate
 
-# Edit .env and add your API keys
-# GEMINI_API_KEY=your_key_here
-# or
-# OPENAI_API_KEY=your_key_here
+# Load environment variables
+export $(grep -v '^#' .env | xargs)
+
+# Start API server
+uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## Running the Pipeline
+**Access Points:**
+- **Swagger UI**: http://localhost:8000/docs (Interactive API documentation)
+- **ReDoc**: http://localhost:8000/redoc (Alternative documentation)
+- **Health Check**: http://localhost:8000/health
 
-### Option 1: Use the Test Script
-
+**Quick API Test:**
 ```bash
-python scripts/test_phase_1_2.py
+# Health check
+curl http://localhost:8000/health
+
+# Start conversation
+curl -X POST http://localhost:8000/api/v1/conversations \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "test_user"}'
+
+# Send message (replace {id} with conversation_id from above)
+curl -X POST http://localhost:8000/api/v1/conversations/{id}/messages \
+  -H "Content-Type: application/json" \
+  -d '{"message": "transformer models"}'
 ```
 
-This will run the full pipeline with:
-- ✅ Tool caching (Redis)
-- ✅ Memory management (session tracking)
-- ✅ Paper collection and deduplication
-- ✅ Relevance analysis
-- ✅ Selective PDF loading (score ≥ 8)
-- ✅ Summarization
-- ✅ Clustering
-- ✅ Report generation
+## Example Workflows
 
-### Option 2: Use in Your Code
+### CLI Research Session
+```bash
+$ python research_cli.py
 
+🔬 RESEARCH ASSISTANT v3.0
+Intelligent Paper Discovery
+
+You: transformer models
+
+🤖 Agent: Here's my research plan:
+
+**Mode:** FULL
+**Phases:** planning, execution, persistence, analysis, pdf_loading,
+            summarization, clustering, writing
+
+**Steps:**
+  1. Search arXiv - Queries: transformer, attention mechanism
+  2. Search HuggingFace - Queries: transformer models
+  ...
+
+Proceed? (yes/no/edit)
+
+You: yes
+
+⏳ Planning...
+⏳ Execution... (99 papers collected)
+⏳ Analysis... (25 relevant papers)
+⏳ PDF Loading... (8 high-value papers)
+⏳ Summarization...
+⏳ Clustering... (4 themes)
+⏳ Writing...
+✅ Complete!
+
+📊 Results
+Topic: transformer models
+Papers Found: 99
+Relevant: 25
+High Relevance: 8
+Clusters: 4
+
+[Report preview shown]
+
+You: /ask What is the difference between BERT and GPT?
+
+🤖 Agent: [Streaming response...]
+BERT (Bidirectional Encoder Representations from Transformers) is designed
+for understanding tasks...
+
+You: quit
+Goodbye!
+```
+
+### API with Python
 ```python
 import asyncio
-from src.research.pipeline import ResearchPipeline
-from src.core.schema import ResearchRequest
-from src.adapters.llm import GeminiClient  # or OpenAIClient
+import httpx
 
-async def main():
-    # Initialize LLM client
-    llm = GeminiClient(api_key="your_key")
+async def research_example():
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        # 1. Start conversation
+        resp = await client.post(
+            "http://localhost:8000/api/v1/conversations",
+            json={"user_id": "researcher1"}
+        )
+        conv_id = resp.json()["conversation_id"]
+        print(f"Conversation: {conv_id}")
 
-    # Create pipeline
-    pipeline = ResearchPipeline(
-        llm_client=llm,
-        skip_analysis=False,      # Enable analysis
-        skip_synthesis=False      # Enable full pipeline
-    )
+        # 2. Send research topic
+        resp = await client.post(
+            f"http://localhost:8000/api/v1/conversations/{conv_id}/messages",
+            json={"message": "transformer models"}
+        )
+        data = resp.json()
+        print(f"State: {data['state']}")  # reviewing
+        print(f"Plan steps: {len(data['plan']['steps'])}")
 
-    # Create request
-    request = ResearchRequest(
-        topic="Transformer Models in NLP",
-        keywords=["transformer", "BERT", "attention"]
-    )
+        # 3. Approve plan
+        resp = await client.post(
+            f"http://localhost:8000/api/v1/conversations/{conv_id}/messages",
+            json={"message": "yes"}
+        )
+        result = resp.json()["result"]
+        print(f"Papers found: {result['unique_papers']}")
+        print(f"Relevant papers: {result['relevant_papers']}")
 
-    # Run pipeline
-    result = await pipeline.run(request)
-
-    # Access results
-    print(f"Papers collected: {result.unique_papers}")
-    print(f"Relevant papers: {result.relevant_papers}")
-    print(f"High-value papers: {result.high_relevance_papers}")
-    print(f"Clusters: {result.clusters_created}")
-    print(f"Cache hit rate: {result.cache_hit_rate:.1%}")
-    print(f"\nReport:\n{result.report_markdown}")
-
-    # Cleanup
-    if pipeline.cache_manager:
-        await pipeline.cache_manager.close()
-    if pipeline.memory_manager:
-        await pipeline.memory_manager.close()
-
-asyncio.run(main())
+asyncio.run(research_example())
 ```
 
-## Expected Output
+### WebSocket with JavaScript
+```javascript
+const ws = new WebSocket('ws://localhost:8000/api/v1/ws/my-conversation');
 
-```
-INFO - Phase 1: Generating research plan...
-INFO - Phase 2: Executing plan (collecting papers)...
-INFO - Cache HIT for tool: arxiv_search
-INFO - Collected 42 unique papers
-INFO - Phase 3: Saving papers to MongoDB...
-INFO - Saved 42 papers to MongoDB
-INFO - Phase 4: Analyzing relevance...
-INFO - Analysis complete: 25 relevant papers
-INFO - Phase 5: Loading full text for high-relevance papers...
-INFO - Loaded full text for 6 papers
-INFO - Phase 6: Generating summaries...
-INFO - Generated 25 summaries
-INFO - Phase 7: Clustering papers by theme...
-INFO - Created 4 clusters
-INFO - Phase 8: Generating final report...
-INFO - Generated report (12543 chars)
-INFO - Pipeline complete in 45.3s
+ws.onopen = () => {
+  console.log('Connected');
 
-✅ Pipeline completed successfully!
+  // Send message
+  ws.send(JSON.stringify({
+    type: 'message',
+    content: 'transformer models'
+  }));
+};
 
-📊 Results:
-  - Papers collected: 42
-  - Relevant: 25
-  - High-value (≥8): 6
-  - Clusters: 4
-  - Cache hit rate: 45.2%
-```
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
 
-## Understanding the Pipeline
-
-### Phase Flow
-
-```
-1. Planning        - LLM generates research steps
-2. Execution       - Tools collect papers (cached)
-3. Persistence     - Save to MongoDB
-4. Analysis        - Score relevance (abstract-only)
-5. PDF Loading     - Selective (only score ≥ 8)
-6. Summarization   - Structured summaries
-7. Clustering      - Group by theme
-8. Report Writing  - Markdown report
+  switch(data.type) {
+    case 'connected':
+      console.log('Conversation started:', data.data.conversation_id);
+      break;
+    case 'response':
+      console.log('State:', data.data.state);
+      console.log('Message:', data.data.message);
+      break;
+    case 'progress':
+      console.log('Progress:', data.data.phase, data.data.message);
+      break;
+    case 'stream_chunk':
+      process.stdout.write(data.data.chunk);
+      break;
+  }
+};
 ```
 
-### Memory Checkpoints
-
-The pipeline creates checkpoints at:
-- After collection (Phase 3)
-- After analysis (Phase 4)
-- After summarization (Phase 6)
-- After clustering (Phase 7)
-
-You can restore from checkpoints:
-
-```python
-memory = ResearchMemoryManager()
-await memory.connect()
-
-# Restore from checkpoint
-session = await memory.restore_from_checkpoint(
-    session_id="abc-123",
-    phase_id="analysis"
-)
-```
-
-## Monitoring
-
-### Check Redis Cache
+## Running Tests
 
 ```bash
-# Connect to Redis CLI
-docker exec -it redis redis-cli
+# Activate environment
+source .venv/bin/activate
+export $(grep -v '^#' .env | xargs)
 
-# Check cache keys
-KEYS tool_cache:*
+# API tests (requires API server running)
+# Terminal 1: Start server
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000
 
-# Get cache stats
-INFO stats
-```
+# Terminal 2: Run tests
+python scripts/test_api.py
 
-### Check MongoDB Data
+# CLI tests (stop API server first - Qdrant conflict)
+pkill -f "uvicorn src.api.main:app"
+python scripts/test_cli.py
 
-```bash
-# Connect to MongoDB
-docker exec -it mongo mongosh
+# Full pipeline test
+python scripts/test_phase_1_2.py
 
-# Use database
-use research_assistant
-
-# Check collections
-show collections
-
-# Query papers
-db.papers.find().limit(5)
-
-# Count by relevance
-db.papers.countDocuments({relevance_score: {$gte: 8}})
+# Conversation interface test
+python scripts/test_phase_4.py
 ```
 
 ## Troubleshooting
 
+### "Module not found" errors
+```bash
+# Ensure you're in the correct directory
+cd /home/duy/Downloads/duy_dev/tiny_researcher/backend
+
+# Ensure venv is activated
+source .venv/bin/activate
+
+# Reinstall dependencies
+pip install -r requirements.txt
+```
+
+### "LLM service unavailable"
+```bash
+# Check if API key is set
+echo $OPENAI_API_KEY  # or GEMINI_API_KEY
+
+# If empty, load from .env
+export $(grep -v '^#' .env | xargs)
+
+# Verify it's now set
+echo $OPENAI_API_KEY
+```
+
 ### "Redis connection failed"
-- **Symptom:** Warning in logs
-- **Impact:** Pipeline continues but without caching
-- **Fix:** Ensure Redis is running: `docker start redis`
+```bash
+# Check if Redis is running
+docker ps | grep redis
+
+# If not running, start it
+docker run -d -p 6379:6379 --name redis redis:7
+
+# Test connection
+docker exec -it redis redis-cli ping
+# Should return: PONG
+```
 
 ### "MongoDB connection failed"
-- **Symptom:** Error and pipeline stops
-- **Fix:** Ensure MongoDB is running: `docker start mongo`
+```bash
+# Check if MongoDB is running
+docker ps | grep mongo
 
-### "PDF download failed"
-- **Symptom:** Warning for specific papers
-- **Impact:** Paper continues without full text
-- **Fix:** Check network connectivity, PDF URL validity
+# If not running, start it
+docker run -d -p 27017:27017 --name mongo mongo:7
 
-### Low cache hit rate
-- **Expected:** First run = 0% (nothing cached yet)
-- **Expected:** Second run on same topic = 50-80%
-- **If always 0%:** Check Redis connection
-
-## Performance Tips
-
-### 1. Use Cache Wisely
-```python
-# Run same query twice - second run uses cache
-result1 = await pipeline.run(request)  # Fresh data
-result2 = await pipeline.run(request)  # Cached (much faster!)
+# Test connection
+docker exec -it mongo mongosh --eval "db.version()"
 ```
 
-### 2. Adjust PDF Threshold
-```python
-# Lower threshold = more PDFs loaded (slower, more detailed)
-loader = PDFLoaderService(cache, relevance_threshold=7.0)
+### "Qdrant storage locked"
+This occurs when running CLI and API simultaneously (both use embedded Qdrant).
 
-# Higher threshold = fewer PDFs (faster, less detailed)
-loader = PDFLoaderService(cache, relevance_threshold=9.0)
+**Solution:**
+```bash
+# Stop the API server
+pkill -f "uvicorn src.api.main:app"
+
+# Then run CLI
+python research_cli.py
 ```
 
-### 3. Skip Synthesis for Speed
-```python
-# Analysis only (fast)
-pipeline = ResearchPipeline(llm, skip_synthesis=True)
+Or vice versa - only run one at a time.
 
-# Full pipeline (slower, complete report)
-pipeline = ResearchPipeline(llm, skip_synthesis=False)
+### Port 8000 already in use
+```bash
+# Find process using port 8000
+lsof -i :8000
+
+# Kill the process
+kill -9 <PID>
+
+# Or use a different port
+uvicorn src.api.main:app --port 8001
 ```
 
-## What's Next?
+## Project Structure
 
-After Phase 1-2, you can:
-1. ✅ Run full research workflows
-2. ✅ Get complete Markdown reports
-3. ✅ Track sessions with memory manager
-4. ✅ Benefit from Redis caching
+```
+backend/
+├── src/
+│   ├── api/              # FastAPI application
+│   │   ├── routes/       # REST & WebSocket endpoints
+│   │   │   ├── conversation.py    # Conversation API + SSE
+│   │   │   ├── websocket.py       # WebSocket endpoint
+│   │   │   ├── planner.py         # Plan CRUD
+│   │   │   └── sources.py         # Source processing
+│   │   └── main.py       # App entry point
+│   ├── cli/              # CLI interface (Rich-based)
+│   │   ├── app.py        # CLI application
+│   │   └── display.py    # Display components
+│   ├── conversation/     # Dialogue management
+│   │   ├── dialogue.py   # DialogueManager
+│   │   ├── context.py    # ConversationContext
+│   │   ├── intent.py     # Intent classifier
+│   │   └── clarifier.py  # Query clarifier
+│   ├── core/             # Core models & config
+│   ├── planner/          # Research planning
+│   │   ├── adaptive_planner.py    # Adaptive planning
+│   │   ├── executor.py            # Plan execution
+│   │   └── service.py             # Planner service
+│   ├── research/         # Pipeline & analysis
+│   │   ├── pipeline.py            # Main pipeline
+│   │   ├── analysis/              # Analysis services
+│   │   └── synthesis/             # Report generation
+│   ├── storage/          # MongoDB & vector store
+│   ├── tools/            # Tool registry & cache
+│   └── memory/           # Memory management
+├── scripts/              # Test scripts
+├── docs/                 # Documentation
+├── requirements.txt      # Python dependencies
+├── requirements-dev.txt  # Development dependencies
+├── research_cli.py       # CLI entry point
+└── .env                  # Configuration (create from template)
+```
 
-Next phases will add:
-- **Phase 3:** Adaptive planning (simple vs deep queries)
-- **Phase 4:** Conversational interface (multi-turn)
-- **Phase 5:** Vector search (semantic similarity)
+## Documentation
 
-## Resources
+- **QUICKSTART.md** - This file
+- **docs/phase_5_api_integration.md** - API implementation guide
+- **docs/system_design.md** - Architecture overview
+- **docs/checklist.md** - Feature checklist
+- **docs/process_track.md** - Development progress
+- **CLAUDE.md** - AI agent guide
 
-- **Full Docs:** `docs/phase_1_2_implementation.md`
-- **API Reference:** See `src/research/pipeline.py` docstrings
-- **Examples:** `scripts/test_phase_1_2.py`
+## API Endpoints Reference
+
+### REST API
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/api/v1/conversations` | POST | Start conversation |
+| `/api/v1/conversations/{id}` | GET | Get conversation state |
+| `/api/v1/conversations/{id}/messages` | POST | Send message |
+| `/api/v1/conversations/{id}` | DELETE | Delete conversation |
+| `/api/v1/conversations/{id}/stream` | GET | SSE stream (real-time) |
+
+### WebSocket
+| Endpoint | Description |
+|----------|-------------|
+| `/api/v1/ws/{conversation_id}` | Real-time bidirectional communication |
+
+## Next Steps
+
+1. **Try the CLI**: `python research_cli.py`
+2. **Explore the API**: Visit http://localhost:8000/docs
+3. **Build a Frontend**: Use the WebSocket API
+4. **Production Deploy**:
+   - Add authentication
+   - Set up monitoring
+   - Configure proper CORS
+   - Use managed MongoDB/Redis
+
+## Support & Resources
+
+- **Interactive API Docs**: http://localhost:8000/docs
+- **Full API Guide**: docs/phase_5_api_integration.md
+- **Architecture**: docs/system_design.md
+- **Test Examples**: scripts/ directory
+
+---
+**Version:** v3.4
+**Status:** ✅ Production Ready (needs hardening)
+**Package Manager:** pip / uv

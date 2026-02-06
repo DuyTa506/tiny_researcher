@@ -306,7 +306,7 @@ class PlanExecutor:
 
                 # Execute tool if not cached
                 if raw_results is None:
-                    logger.info(f"Executing tool: {step.tool}", extra={"args": step.tool_args})
+                    logger.info(f"Executing tool: {step.tool}", extra={"tool_args": step.tool_args})
                     raw_results = await execute_tool(step.tool, **step.tool_args)
 
                     # Cache the result

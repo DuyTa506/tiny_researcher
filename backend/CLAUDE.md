@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Research Assistant Backend (v3.0)** is an AI-powered research paper aggregation and analysis system that automatically collects, analyzes, clusters, and summarizes academic papers from multiple sources (arXiv, Hugging Face, URLs), then generates comprehensive Markdown reports.
+**Research Assistant Backend (v3.4)** is an AI-powered research paper aggregation and analysis system that automatically collects, analyzes, clusters, and summarizes academic papers from multiple sources (arXiv, Hugging Face, URLs), then generates comprehensive Markdown reports.
 
-**Current Status:** Phase 1-2 Complete - Full 8-phase pipeline operational with Redis caching, session management, and complete report generation.
+**Current Status:** All Phases Complete (v3.4) - Full 8-phase pipeline with adaptive planning, conversational interface, CLI with streaming, REST + WebSocket API, Redis caching, session management, and complete report generation.
 
 ## Project Structure
 
@@ -28,7 +28,13 @@ research_assistant/backend/
 │   ├── planner/                # Research planning
 │   │   ├── service.py         # Plan generation
 │   │   ├── executor.py        # ✨ Plan execution (enhanced)
-│   │   └── store.py           # Plan storage
+│   │   ├── store.py           # Plan storage
+│   │   ├── query_parser.py    # ✨ Query parsing (Phase 3)
+│   │   └── adaptive_planner.py # ✨ Adaptive planning (Phase 3)
+│   ├── conversation/           # ✨ Conversational interface (Phase 4)
+│   │   ├── context.py         # ConversationContext, DialogueState
+│   │   ├── intent.py          # IntentClassifier, UserIntent
+│   │   └── dialogue.py        # DialogueManager
 │   ├── research/               # Research workflow
 │   │   ├── pipeline.py        # ✨ Complete 8-phase pipeline
 │   │   ├── analysis/
@@ -46,17 +52,24 @@ research_assistant/backend/
 │   └── api/                    # FastAPI endpoints
 │       └── main.py
 ├── scripts/                    # Test scripts
-│   ├── test_phase_1_2.py      # ✨ Full pipeline test (NEW)
+│   ├── test_api.py            # ✨ API integration test (Phase 5)
+│   ├── test_cli.py            # ✨ CLI test (Phase 4.5)
+│   ├── test_phase_1_2.py      # ✨ Full pipeline test
+│   ├── test_phase_3.py        # ✨ Adaptive planning test
+│   ├── test_phase_4.py        # ✨ Conversational interface test
 │   ├── test_research_pipeline.py
 │   └── debug_analyzer.py
 ├── docs/                       # Documentation
-│   ├── phase_1_2_implementation.md  # ✨ Current implementation
+│   ├── phase_5_api_integration.md  # ✨ API implementation (Phase 5)
+│   ├── phase_1_2_implementation.md
 │   ├── agent_guide.md         # Quick reference
 │   ├── checklist.md           # Progress tracking
 │   ├── dataflow.md            # Architecture diagrams
 │   ├── system_design.md       # System architecture
 │   └── process_track.md       # Development tracking
-├── pyproject.toml             # Poetry dependencies
+├── requirements.txt            # ✨ pip dependencies
+├── requirements-dev.txt        # ✨ Development dependencies
+├── pyproject.toml             # Poetry config (legacy)
 ├── .env.example               # Environment template
 ├── QUICKSTART.md              # ✨ Getting started guide
 └── CLAUDE.md                  # This file
@@ -66,20 +79,39 @@ research_assistant/backend/
 
 ### Package Management
 
-The project uses **Poetry** for dependency management.
+The project uses **pip** or **uv** for dependency management.
 
 ```bash
-# Activate environment (Windows)
-.\venv\Scripts\Activate.ps1
-
-# Activate environment (Linux/Mac)
-source venv/bin/activate
+# Using pip (traditional)
+# Activate environment
+source .venv/bin/activate
 
 # Install dependencies
-poetry install
+pip install -r requirements.txt
+
+# Install dev dependencies
+pip install -r requirements-dev.txt
 
 # Add new package
-poetry add <package_name>
+pip install <package_name>
+# Then update requirements.txt:
+pip freeze > requirements.txt
+```
+
+```bash
+# Using uv (faster alternative)
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create venv and install
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+
+# Add new package
+uv pip install <package_name>
+# Then update requirements.txt:
+uv pip freeze > requirements.txt
 ```
 
 ### Docker Services
@@ -106,8 +138,14 @@ docker rm mongo redis
 ### Running Tests
 
 ```bash
-# Full Phase 1-2 pipeline test (RECOMMENDED)
+# Full Phase 1-2 pipeline test
 python scripts/test_phase_1_2.py
+
+# Phase 3 adaptive planning test
+python scripts/test_phase_3.py
+
+# Phase 4 conversational interface test
+python scripts/test_phase_4.py
 
 # Legacy tests (still functional)
 python scripts/test_research_pipeline.py
@@ -119,13 +157,33 @@ pytest tests/
 
 ## Entry Points
 
-### Main Pipeline
+### Main Pipeline (Two-Step with Review)
 ```python
 from src.research.pipeline import ResearchPipeline
 from src.core.schema import ResearchRequest
 
-# Full 8-phase pipeline
-pipeline = ResearchPipeline(llm_client, skip_synthesis=False)
+pipeline = ResearchPipeline(llm_client, use_adaptive_planner=True)
+
+# Step 1: Generate plan for review
+request = ResearchRequest(topic="transformer models")
+adaptive_plan = await pipeline.generate_adaptive_plan(request)
+
+# Human reviews
+print(adaptive_plan.to_display())
+# "Step 1: Search arXiv for transformers..."
+# "Detected: comprehensive, running all 8 phases"
+
+# Human can edit
+adaptive_plan.plan.steps[0].queries.append("BERT")
+
+# Step 2: Execute approved plan
+result = await pipeline.execute_plan(request, adaptive_plan=adaptive_plan)
+```
+
+### One-Shot (No Review, for Automation)
+```python
+# Skip review, run immediately
+pipeline = ResearchPipeline(llm_client)
 result = await pipeline.run(ResearchRequest(topic="AI Research"))
 ```
 
@@ -269,17 +327,20 @@ print(f"Cache hit rate: {progress.cache_hit_rate:.1%}")
 
 ## Roadmap
 
-### Phase 3: Adaptive Planning (Next)
-- Query parser for intent classification
-- Phase templates based on query complexity
-- Adaptive planner that chooses workflow
+### Phase 3: Adaptive Planning ✅ COMPLETE
+- [x] QueryParser for intent classification
+- [x] ResearchQuery model - structured query representation
+- [x] AdaptivePlannerService - choose phases based on query type
+- [x] Phase templates (simple, comprehensive, url-based, comparison)
 
-### Phase 4: Conversational Interface
-- Multi-turn dialogue support
-- Follow-up question handling
-- Refinement operations (add papers, change focus)
+### Phase 4: Conversational Interface ✅ COMPLETE
+- [x] ConversationContext - multi-turn state management
+- [x] DialogueManager - conversation flow orchestration
+- [x] IntentClassifier - user intent detection (approve, reject, edit, etc.)
+- [x] Human-in-the-loop workflow - generate_plan() → review → execute_plan()
+- [x] State machine - IDLE → PLANNING → REVIEWING → EXECUTING → COMPLETE
 
-### Phase 5: Production Readiness
+### Phase 5: Production Readiness (Next)
 - API endpoints for all operations
 - Authentication and rate limiting
 - Horizontal scaling with Celery
@@ -291,6 +352,8 @@ print(f"Cache hit rate: {progress.cache_hit_rate:.1%}")
 |------|---------|
 | Start services | `docker run -d -p 27017:27017 mongo:7`<br>`docker run -d -p 6379:6379 redis:7` |
 | Run full pipeline | `python scripts/test_phase_1_2.py` |
+| Run adaptive planning test | `python scripts/test_phase_3.py` |
+| Run conversational test | `python scripts/test_phase_4.py` |
 | Check Redis cache | `docker exec -it redis redis-cli`<br>`KEYS tool_cache:*` |
 | Check MongoDB | `docker exec -it mongo mongosh`<br>`use research_assistant`<br>`db.papers.find().limit(5)` |
 | Clear cache | In Redis: `FLUSHDB` |

@@ -269,8 +269,13 @@ class ResearchMemoryManager:
 
         papers = await self.get_papers(session_id)
 
+        # Convert session to dict and handle datetime serialization
+        session_dict = asdict(session)
+        session_dict['created_at'] = session.created_at.isoformat()
+        session_dict['updated_at'] = session.updated_at.isoformat()
+
         checkpoint_data = {
-            "session": asdict(session),
+            "session": session_dict,
             "papers_count": len(papers),
             "phase_id": phase_id,
             "timestamp": datetime.utcnow().isoformat()

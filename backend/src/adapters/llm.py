@@ -1,17 +1,36 @@
 
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, AsyncIterator
 import os
 import json
 import logging
 
 logger = logging.getLogger(__name__)
 
+
+# Type alias for streaming callback
+StreamCallback = Any  # Callable[[str], None] or Awaitable
+
+
 class LLMClientInterface(ABC):
     @abstractmethod
     async def generate(self, prompt: str, system_instruction: Optional[str] = None, json_mode: bool = False) -> str:
         """Generate text from a prompt."""
         pass
+
+    async def generate_stream(
+        self,
+        prompt: str,
+        system_instruction: Optional[str] = None
+    ) -> AsyncIterator[str]:
+        """
+        Generate text with streaming.
+
+        Yields chunks of text as they are generated.
+        Default implementation falls back to non-streaming.
+        """
+        result = await self.generate(prompt, system_instruction)
+        yield result
 
 class GeminiAdapter(LLMClientInterface):
     """
@@ -59,9 +78,38 @@ class GeminiAdapter(LLMClientInterface):
             result_text = response.text
             logger.debug(f"Gemini response length: {len(result_text)}")
             return result_text
-            
+
         except Exception as e:
             logger.error(f"Gemini generation error: {e}")
+            raise
+
+    async def generate_stream(
+        self,
+        prompt: str,
+        system_instruction: Optional[str] = None
+    ) -> AsyncIterator[str]:
+        """Generate text with streaming using Gemini."""
+        self._ensure_client()
+
+        try:
+            # Combine system instruction with prompt if provided
+            full_prompt = prompt
+            if system_instruction:
+                full_prompt = f"{system_instruction}\n\n{prompt}"
+
+            # Generate with streaming
+            response = self._model.generate_content(
+                full_prompt,
+                stream=True
+            )
+
+            # Yield chunks as they arrive
+            for chunk in response:
+                if chunk.text:
+                    yield chunk.text
+
+        except Exception as e:
+            logger.error(f"Gemini streaming error: {e}")
             raise
 
 class OpenAIAdapter(LLMClientInterface):
@@ -105,9 +153,39 @@ class OpenAIAdapter(LLMClientInterface):
             result_text = response.choices[0].message.content
             logger.debug(f"OpenAI response length: {len(result_text)}")
             return result_text
-            
+
         except Exception as e:
             logger.error(f"OpenAI generation error: {e}")
+            raise
+
+    async def generate_stream(
+        self,
+        prompt: str,
+        system_instruction: Optional[str] = None
+    ) -> AsyncIterator[str]:
+        """Generate text with streaming using OpenAI."""
+        self._ensure_client()
+
+        try:
+            messages = []
+            if system_instruction:
+                messages.append({"role": "system", "content": system_instruction})
+            messages.append({"role": "user", "content": prompt})
+
+            # Create streaming response
+            stream = await self._client.chat.completions.create(
+                model=self.model_name,
+                messages=messages,
+                stream=True
+            )
+
+            # Yield chunks as they arrive
+            async for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+
+        except Exception as e:
+            logger.error(f"OpenAI streaming error: {e}")
             raise
 
 class LLMFactory:
@@ -142,3 +220,8 @@ class LLMFactory:
             )
         else:
             raise ValueError(f"Unknown LLM provider: {provider}")
+
+
+# Aliases for convenience
+GeminiClient = GeminiAdapter
+OpenAIClient = OpenAIAdapter

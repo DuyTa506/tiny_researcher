@@ -2,6 +2,34 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import date
+from enum import Enum
+
+
+class QueryType(str, Enum):
+    """Simplified query types - just 2 options."""
+    QUICK = "quick"  # Fast search, skip synthesis (4 phases)
+    FULL = "full"    # Complete research with all phases (8 phases)
+
+
+class ResearchQuery(BaseModel):
+    """
+    Simplified research query representation.
+    Only essential fields to reduce LLM confusion.
+    """
+    original_query: str = Field(..., description="Original user query")
+    query_type: QueryType = Field(QueryType.FULL, description="QUICK or FULL")
+    main_topic: str = Field("", description="Primary topic extracted")
+
+    # Source hints
+    has_urls: bool = Field(False, description="User provided URLs")
+    urls: List[str] = Field(default_factory=list, description="URLs extracted from query")
+
+    # Phase control
+    skip_synthesis: bool = Field(False, description="Skip synthesis phases (for QUICK)")
+
+    # Confidence
+    confidence: float = Field(0.8, description="Parser confidence (0-1)")
+
 
 class TimeWindow(BaseModel):
     start: Optional[date] = Field(None, description="Start date (YYYY-MM-DD). If None, no start limit.")
@@ -51,6 +79,10 @@ class ResearchRequest(BaseModel):
     
     # --- OPTIONAL (Configuration) ---
     output_config: OutputConfig = Field(default_factory=OutputConfig, description="Configuration for the final report.")
+
+    # --- OPTIONAL (Memory hints) ---
+    min_papers: Optional[int] = Field(None, description="Minimum number of papers to collect.")
+    max_papers: Optional[int] = Field(None, description="Maximum number of papers to collect.")
 
 class ResearchStep(BaseModel):
     """

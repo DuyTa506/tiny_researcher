@@ -1,13 +1,19 @@
-# System Design - Research Assistant (v3.0)
+# System Design - Research Assistant (v3.3)
 
 ## Architecture Overview
 
 ```mermaid
 graph TB
-    User[User] --> API[FastAPI]
+    User[User] --> CLI[CLI / API]
 
-    subgraph Core[Core Pipeline - v3.0]
-        API --> Planner[PlannerService]
+    subgraph Interface[Interface Layer]
+        CLI --> DialogueMgr[DialogueManager]
+        DialogueMgr --> Intent[IntentClassifier]
+        DialogueMgr --> Clarifier[QueryClarifier]
+    end
+
+    subgraph Core[Core Pipeline - v3.3]
+        DialogueMgr --> Planner[AdaptivePlannerService]
         Planner --> Executor[PlanExecutor + Cache]
         Executor --> Tools[Tool Registry]
         Executor --> Dedup[PaperDeduplicator]
@@ -36,6 +42,7 @@ graph TB
 
     Writer --> Report[Final Report]
 
+    style Interface fill:#f3e5f5
     style Core fill:#e3f2fd
     style Memory fill:#fff3e0
     style Analysis fill:#e8f5e9
@@ -54,9 +61,63 @@ graph TB
 | PDF Parser | pypdf | Latest |
 | Task Queue | Celery (future) | 5.3+ |
 
-## Key Components (Phase 1-2)
+## Key Components (Phase 1-4)
 
-### 1. Tool Cache Manager
+### 1. CLI Interface
+**File:** `src/cli/`
+
+**Purpose:** Interactive command-line interface with streaming output
+
+**Components:**
+- `ResearchDisplay` - Rich-based themed console output
+- `StreamingDisplay` - Live progress updates during execution
+- `ResearchCLI` - Main application loop with conversation flow
+
+**Features:**
+- Colorful panels, tables, markdown rendering
+- Streaming LLM responses (typewriter effect)
+- Progress indicators for pipeline phases
+- Commands: `/ask`, `/explain` with streaming
+
+---
+
+### 2. Dialogue Manager
+**File:** `src/conversation/dialogue.py`
+
+**Purpose:** Conversation orchestration with state machine
+
+**States:**
+```
+IDLE → CLARIFYING → PLANNING → REVIEWING → EXECUTING → COMPLETE
+```
+
+**Features:**
+- Multi-turn dialogue with context
+- Intent classification (approve, reject, edit, new_research)
+- Query clarification ("Think Before Plan")
+- Progress callback support for streaming
+
+---
+
+### 3. LLM Adapters with Streaming
+**File:** `src/adapters/llm.py`
+
+**Purpose:** Unified interface for OpenAI and Gemini with streaming
+
+**Interface:**
+```python
+class LLMClientInterface(ABC):
+    async def generate(self, prompt: str, ...) -> str
+    async def generate_stream(self, prompt: str, ...) -> AsyncIterator[str]
+```
+
+**Implementations:**
+- `GeminiAdapter` - Google Gemini with `stream=True`
+- `OpenAIAdapter` - OpenAI with streaming chunks
+
+---
+
+### 4. Tool Cache Manager
 **File:** `src/tools/cache_manager.py`
 
 **Purpose:** Redis-backed caching for tool execution results
@@ -218,23 +279,32 @@ TTL: 24 hours
 
 ---
 
-## API Endpoints (Current)
+## API Endpoints (v3.4)
 
-### Implemented
+### Conversations (Implemented)
 ```
-POST /api/plans - Create research plan
-GET  /api/plans/{id} - Get plan details
-PUT  /api/plans/{id} - Update plan
+POST /api/v1/conversations - Start conversation
+GET  /api/v1/conversations/{id} - Get conversation state
+POST /api/v1/conversations/{id}/messages - Send message
+DELETE /api/v1/conversations/{id} - Delete conversation
+GET  /api/v1/conversations/{id}/stream - SSE for progress
 ```
 
-### Planned (Phase 3)
+### WebSocket (Implemented)
 ```
-POST /api/research - Execute full pipeline
-GET  /api/research/{session_id} - Get session status
-GET  /api/research/{session_id}/report - Get final report
-POST /api/research/{session_id}/checkpoint - Save checkpoint
-POST /api/research/{session_id}/restore - Restore from checkpoint
+WS /api/v1/ws/{conversation_id} - Real-time bidirectional
 ```
+
+### Plans (Legacy)
+```
+POST /api/v1/plan - Create research plan
+GET  /api/v1/plan/{id} - Get plan details
+PUT  /api/v1/plan/{id} - Update plan
+POST /api/v1/plan/{id}/execute - Start execution
+DELETE /api/v1/plan/{id} - Delete plan
+```
+
+---
 
 ---
 

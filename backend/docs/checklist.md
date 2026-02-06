@@ -42,48 +42,71 @@
 - [x] **Checkpoint/restore functionality**
 - [x] **Analysis context generation**
 
-## Phase 8: API Layer ⏳
+## Phase 8: Adaptive Planning ✅
+- [x] **QueryParser - simplified query type detection (QUICK/FULL)**
+- [x] **AdaptivePlannerService - phase selection based on query**
+- [x] **Phase templates for different query types**
+
+## Phase 9: Conversational Interface ✅
+- [x] **IntentClassifier - multilingual intent detection (5 intents)**
+- [x] **QueryClarifier - "Think Before Plan" approach**
+- [x] **DialogueManager - full conversation orchestration**
+- [x] **CLARIFYING state - asks questions before searching**
+- [x] **Memory integration - episodic + procedural memory**
+
+## Phase 10: CLI Interface ✅
+- [x] **Rich-based colorful output**
+- [x] **Streaming LLM responses**
+- [x] **Progress indicators for pipeline phases**
+- [x] **Interactive conversation flow**
+- [x] **/ask and /explain commands with streaming**
+
+## Phase 11: API Layer ✅
 - [x] FastAPI setup
 - [x] Plan CRUD endpoints
-- [ ] **Pipeline execution endpoint (with session tracking)**
-- [ ] **Report retrieval endpoint**
-- [ ] **Session management endpoints**
+- [x] **Conversation REST endpoints (CRUD)**
+- [x] **Message processing with progress callbacks**
+- [x] **Streaming response support (SSE)**
+- [x] **WebSocket for real-time updates**
+- [x] **LLM streaming via WebSocket**
+- [x] **CORS middleware for frontend integration**
 
 ---
 
-## Architecture (Current v3.0 - Phase 1-2)
+## Architecture (Current v3.4 - Phase 5 Complete)
 
 ```
-User Input → PlannerService → ResearchPlan
-                                   ↓
-                         PlanExecutor (with cache)
-                                   ↓
-          ┌────────────────────────┴────────────────────┐
-          ↓                                             ↓
-    Tool Registry                             PaperDeduplicator
-    (cached results)                                    ↓
-          ↓                                      Unique Papers
-    ArxivSearcher ────────────────────►              ↓
-                                           ResearchMemoryManager
-                                          (session tracking)
-                                                      ↓
-                                           MongoDB (papers)
-                                                      ↓
-                                          ┌──── AnalyzerService ✅
-                                          │    (batch scoring)
+User Input → IntentClassifier → DialogueManager
+                                      ↓
+                   ┌──────────────────┴──────────────────┐
+                   ↓                                     ↓
+            QueryClarifier                        AdaptivePlanner
+            (Think Before Plan)                   (Query Analysis)
+                   ↓                                     ↓
+            CLARIFYING State ←───────────────→ ResearchPlan
+                   ↓                                     ↓
+            User Clarification                   REVIEWING State
+                   ↓                                     ↓
+                   └──────────────→ PlanExecutor (with cache)
                                           ↓
-                                   Papers with scores
+                                    Tool Registry
+                                    (cached results)
                                           ↓
-                                   PDFLoaderService ✅
-                                   (score >= 8 only)
+                                    PaperDeduplicator
                                           ↓
-                                   SummarizerService ✅
+                                    MongoDB (papers)
                                           ↓
-                                   ClustererService ✅
+                                    AnalyzerService
                                           ↓
-                                   WriterService ✅
+                                    PDFLoaderService (score >= 8)
                                           ↓
-                                   Final Report (Markdown)
+                                    SummarizerService
+                                          ↓
+                                    ClustererService
+                                          ↓
+                                    WriterService
+                                          ↓
+                                    Final Report (Markdown)
 ```
 
 ## Test Results
@@ -93,49 +116,74 @@ User Input → PlannerService → ResearchPlan
 | test_research_pipeline.py | ✅ | 99 papers, scores 3-9 |
 | debug_analyzer.py | ✅ | JSON parsing fixed |
 | test_mongodb.py | ✅ | CRUD working |
-| **test_phase_1_2.py** | ✅ | **Full 8-phase pipeline** |
+| test_phase_1_2.py | ✅ | Full 8-phase pipeline |
+| test_phase_4.py | ✅ | Conversational interface + Memory |
+| test_cli.py | ✅ | CLI with streaming |
 
-## Pipeline Phases (v3.0)
+## Pipeline Phases (v3.3)
 
-1. **Planning** - LLM generates research plan
-2. **Execution** - Collect papers (with Redis cache)
-3. **Persistence** - Save to MongoDB
-4. **Analysis** - Score relevance (abstract-only)
-5. **PDF Loading** - Load full text for score >= 8
-6. **Summarization** - Generate structured summaries
-7. **Clustering** - Group papers by theme
-8. **Writing** - Generate final Markdown report
+1. **Clarification** - Ask questions if query is complex
+2. **Planning** - LLM generates research plan
+3. **Reviewing** - User approves/edits plan
+4. **Execution** - Collect papers (with Redis cache)
+5. **Persistence** - Save to MongoDB
+6. **Analysis** - Score relevance (abstract-only)
+7. **PDF Loading** - Load full text for score >= 8
+8. **Summarization** - Generate structured summaries
+9. **Clustering** - Group papers by theme
+10. **Writing** - Generate final Markdown report
 
-## Metrics Tracked
+## Memory Types
 
-- Total papers collected
-- Unique papers (after dedup)
-- Duplicates removed
-- Relevant papers (score >= 7)
-- High-relevance papers (score >= 8)
-- Papers with full text loaded
-- Papers with summaries
-- Clusters created
-- **Cache hit rate**
-- **Average step duration**
-- **Relevance distribution (3-5, 6-7, 8-10)**
+| Type | Implementation | Purpose |
+|------|---------------|---------|
+| Working | ConversationContext | Current dialogue state |
+| Episodic | EpisodicMemory | Past research sessions |
+| Procedural | UserPreferences | Learned user patterns |
+| Semantic | VectorStore | Paper embeddings (Phase 5) |
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `<topic>` | Start research on topic |
+| `ok` / `yes` | Confirm and proceed |
+| `cancel` | Cancel current operation |
+| `add <text>` | Add to plan |
+| `remove <text>` | Remove from plan |
+| `/ask <question>` | Ask LLM with streaming |
+| `/explain <topic>` | Explain topic with streaming |
+| `quit` | Exit application |
 
 ---
 
-## Next Steps (Phase 3+)
+## API Endpoints (v3.4)
 
-### Phase 3: Adaptive Planning
-- [ ] Query type detection (simple/comprehensive/url-based)
-- [ ] Phase templates based on complexity
-- [ ] QueryParser for intent classification
+### REST API Endpoints (Implemented)
+- [x] `POST /api/v1/conversations` - Start conversation
+- [x] `POST /api/v1/conversations/{id}/messages` - Send message
+- [x] `GET /api/v1/conversations/{id}` - Get conversation state
+- [x] `DELETE /api/v1/conversations/{id}` - Delete conversation
+- [x] `GET /api/v1/conversations/{id}/stream` - SSE for progress
 
-### Phase 4: Conversational Interface
-- [ ] Multi-turn dialogue support
-- [ ] Follow-up question handling (QAEngine)
-- [ ] Refinement operations (add_papers, change_focus)
-- [ ] State machine (IDLE → PLANNING → RESEARCHING → INTERACTIVE)
+### WebSocket Support (Implemented)
+- [x] `WS /api/v1/ws/{conversation_id}` - Real-time bidirectional
+- [x] Real-time message streaming
+- [x] Pipeline progress updates
+- [x] LLM response streaming via /ask and /explain
 
-### Phase 5: Vector Store
-- [ ] Semantic search over papers
-- [ ] "Find similar" functionality
+---
+
+## Next Steps (Future Enhancements)
+
+### Production Readiness
+- [ ] Authentication and API keys
+- [ ] Rate limiting
+- [ ] Request validation and sanitization
+- [ ] Error handling improvements
+- [ ] Logging and monitoring
+
+### Vector Store Integration
+- [ ] Semantic search for papers
+- [ ] "Find similar" feature
 - [ ] Embedding caching

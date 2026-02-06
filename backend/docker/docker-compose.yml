@@ -1,72 +1,129 @@
 version: '3.8'
 
 services:
+  # FastAPI Application
   api:
     build:
       context: ../
       dockerfile: docker/Dockerfile
+    container_name: research_assistant_api
     ports:
       - "8000:8000"
     environment:
       - MONGO_URL=mongodb://mongo:27017
       - MONGO_DB_NAME=research_assistant
       - REDIS_URL=redis://redis:6379/0
-      # Placeholders for future integration
-      - VECTOR_DB_URL=http://qdrant:6333
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ENVIRONMENT=development
+      - PROJECT_NAME=Research Assistant
+      - VERSION=3.4.0
+      # Add your API keys here or use .env file
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    env_file:
+      - ../.env
     depends_on:
-      - mongo
-      - redis
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ../src:/app/src
+      - ../qdrant_storage:/app/qdrant_storage
+    networks:
+      - research_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
-  worker:
-    build:
-      context: ../
-      dockerfile: docker/Dockerfile
-    command: celery -A src.workers.celery_app worker --loglevel=info
-    environment:
-      - MONGO_URL=mongodb://mongo:27017
-      - MONGO_DB_NAME=research_assistant
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - mongo
-      - redis
-
+  # MongoDB Database
   mongo:
     image: mongo:7
+    container_name: research_assistant_mongo
     ports:
       - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=research_assistant
+      # For production, add authentication:
+      # - MONGO_INITDB_ROOT_USERNAME=admin
+      # - MONGO_INITDB_ROOT_PASSWORD=your_password
     volumes:
       - mongo_data:/data/db
-    environment:
-      # No auth for dev, add MONGO_INITDB_ROOT_USERNAME/PASSWORD for prod
-      - MONGO_INITDB_DATABASE=research_assistant
+      - mongo_config:/data/configdb
+    networks:
+      - research_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
+  # Redis Cache
   redis:
-    image: redis:7
+    image: redis:7-alpine
+    container_name: research_assistant_redis
     ports:
       - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - research_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
-  # Placeholder services (commented out until needed)
-  # qdrant:
-  #   image: qdrant/qdrant
-  #   ports:
-  #     - "6333:6333"
-  #   volumes:
-  #     - qdrant_data:/qdrant/storage
+  # MongoDB Express (Optional - Web UI for MongoDB)
+  mongo-express:
+    image: mongo-express:latest
+    container_name: research_assistant_mongo_express
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_URL=mongodb://mongo:27017/
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin123
+    depends_on:
+      - mongo
+    networks:
+      - research_net
+    restart: unless-stopped
+    profiles:
+      - tools
 
-  # elasticsearch:
-  #   image: elasticsearch:8.11.0
-  #   ports:
-  #     - "9200:9200"
-  #   environment:
-  #     - discovery.type=single-node
-  #     - xpack.security.enabled=false
-  #   volumes:
-  #     - elastic_data:/usr/share/elasticsearch/data
+  # Redis Commander (Optional - Web UI for Redis)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: research_assistant_redis_commander
+    ports:
+      - "8082:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      - redis
+    networks:
+      - research_net
+    restart: unless-stopped
+    profiles:
+      - tools
+
+networks:
+  research_net:
+    driver: bridge
 
 volumes:
   mongo_data:
-  # qdrant_data:
-  # elastic_data:
+    driver: local
+  mongo_config:
+    driver: local
+  redis_data:
+    driver: local

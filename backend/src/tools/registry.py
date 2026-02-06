@@ -114,7 +114,7 @@ async def execute_tool(name: str, **kwargs) -> Any:
         raise ToolNotFoundError(name)
     
     try:
-        logger.info(f"Executing tool: {name}", extra={"args": kwargs})
+        logger.info(f"Executing tool: {name}", extra={"tool_args": kwargs})
         
         if tool.is_async:
             result = await tool.fn(**kwargs)
