@@ -19,7 +19,7 @@ research_assistant/backend/
 │   │   ├── models.py          # Pydantic models (Paper, EvidenceSpan, StudyCard, Claim, etc.)
 │   │   ├── schema.py          # API schemas (ResearchRequest, ResearchPlan)
 │   │   ├── prompts.py         # LLM prompts (screening, evidence, claims, audit, gaps)
-│   │   └── memory_manager.py  # Session memory (Phase 1-2)
+│   │   └── memory_manager.py  # Session memory, phase transitions (Phase 1-2)
 │   ├── tools/                  # Tool system
 │   │   ├── registry.py        # Tool registration
 │   │   ├── schema.py          # Tool schemas
@@ -32,9 +32,10 @@ research_assistant/backend/
 │   │   ├── query_parser.py    # Query parsing (QUICK/FULL)
 │   │   └── adaptive_planner.py # Adaptive planning with citation-first phase templates
 │   ├── conversation/           # Conversational interface
-│   │   ├── context.py         # ConversationContext, DialogueState
-│   │   ├── intent.py          # IntentClassifier, UserIntent
-│   │   └── dialogue.py        # DialogueManager
+│   │   ├── context.py         # ConversationContext, DialogueState, message history
+│   │   ├── intent.py          # IntentClassifier, UserIntent (with conversation history)
+│   │   ├── clarifier.py       # Query clarification (with conversation history)
+│   │   └── dialogue.py        # DialogueManager (short-term memory via last 6 messages)
 │   ├── research/               # Research workflow
 │   │   ├── pipeline.py        # 10-phase citation-first pipeline (+ legacy 8-phase)
 │   │   ├── gates.py           # ✨ HITL approval gates (PDF/URL/token budget)
@@ -394,7 +395,6 @@ print(f"Cache hit rate: {progress.cache_hit_rate:.1%}")
 3. **No anchor-term constraint** - Refined queries are not required to share core terms with the original query, allowing topic drift
 4. **No authentication** - API has no auth (development only)
 5. **Single instance** - No distributed processing yet
-6. **No API endpoints for pipeline** - Must call directly via Python
 
 ## Roadmap
 
@@ -410,6 +410,9 @@ print(f"Cache hit rate: {progress.cache_hit_rate:.1%}")
 - [x] IntentClassifier - user intent detection (approve, reject, edit, etc.)
 - [x] Human-in-the-loop workflow - generate_plan() → review → execute_plan()
 - [x] State machine - IDLE → PLANNING → REVIEWING → EXECUTING → COMPLETE
+- [x] State persistence (activity_log + detailed_state)
+- [x] Short-term conversational memory (last 6 messages passed to all LLM prompts)
+- [x] Conversation history in intent classification, clarification, and chat responses
 
 ### Phase 5: API Layer ✅ COMPLETE
 - [x] REST endpoints for conversations
@@ -491,7 +494,6 @@ print(f"Cache hit rate: {progress.cache_hit_rate:.1%}")
 ## Documentation
 
 - **QUICKSTART.md** - Getting started guide
-- **docs/phase_1_2_implementation.md** - Current implementation details
 - **docs/agent_guide.md** - AI agent quick reference
 - **docs/system_design.md** - System architecture
 - **docs/dataflow.md** - Pipeline flow diagrams

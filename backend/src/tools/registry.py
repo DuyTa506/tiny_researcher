@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ToolDefinition:
     """Definition of a registered tool."""
+
     name: str
     description: str
     fn: Callable
@@ -27,6 +28,7 @@ class ToolDefinition:
 
 class ToolNotFoundError(Exception):
     """Raised when a tool is not found in registry."""
+
     def __init__(self, tool_name: str):
         self.tool_name = tool_name
         super().__init__(f"Tool not found: {tool_name}")
@@ -34,6 +36,7 @@ class ToolNotFoundError(Exception):
 
 class ToolExecutionError(Exception):
     """Raised when tool execution fails."""
+
     def __init__(self, tool_name: str, error: Exception):
         self.tool_name = tool_name
         self.original_error = error
@@ -44,40 +47,37 @@ class ToolExecutionError(Exception):
 TOOL_REGISTRY: Dict[str, ToolDefinition] = {}
 
 
-def register_tool(
-    name: str,
-    description: str,
-    tags: List[str] = None
-):
+def register_tool(name: str, description: str, tags: List[str] = None):
     """
     Decorator to register a function as a tool.
-    
+
     Usage:
         @register_tool("arxiv_search", "Search ArXiv papers")
         async def arxiv_search(query: str, max_results: int = 20):
             ...
     """
+
     def decorator(func: Callable):
         # Generate parameter schema from function signature
         from src.tools.schema import generate_parameters_schema
-        
+
         parameters = generate_parameters_schema(func)
         is_async = asyncio.iscoroutinefunction(func)
-        
+
         tool_def = ToolDefinition(
             name=name,
             description=description,
             fn=func,
             parameters=parameters,
             is_async=is_async,
-            tags=tags or []
+            tags=tags or [],
         )
-        
+
         TOOL_REGISTRY[name] = tool_def
         logger.info(f"Registered tool: {name}")
-        
+
         return func
-    
+
     return decorator
 
 
@@ -97,14 +97,14 @@ def list_tools(tag: str = None) -> List[ToolDefinition]:
 async def execute_tool(name: str, **kwargs) -> Any:
     """
     Execute a registered tool by name.
-    
+
     Args:
         name: Tool name
         **kwargs: Arguments to pass to the tool
-        
+
     Returns:
         Tool execution result
-        
+
     Raises:
         ToolNotFoundError: If tool not registered
         ToolExecutionError: If execution fails
@@ -112,18 +112,18 @@ async def execute_tool(name: str, **kwargs) -> Any:
     tool = TOOL_REGISTRY.get(name)
     if not tool:
         raise ToolNotFoundError(name)
-    
+
     try:
         logger.info(f"Executing tool: {name}", extra={"tool_args": kwargs})
-        
+
         if tool.is_async:
             result = await tool.fn(**kwargs)
         else:
             result = tool.fn(**kwargs)
-        
+
         logger.info(f"Tool completed: {name}")
         return result
-        
+
     except Exception as e:
         logger.error(f"Tool failed: {name}", exc_info=True)
         raise ToolExecutionError(name, e)
@@ -132,7 +132,7 @@ async def execute_tool(name: str, **kwargs) -> Any:
 def get_tools_for_llm() -> List[Dict[str, Any]]:
     """
     Export tools in OpenAI function-calling format.
-    
+
     Returns:
         List of tool definitions compatible with OpenAI API
     """
@@ -142,8 +142,8 @@ def get_tools_for_llm() -> List[Dict[str, Any]]:
             "function": {
                 "name": tool.name,
                 "description": tool.description,
-                "parameters": tool.parameters
-            }
+                "parameters": tool.parameters,
+            },
         }
         for tool in TOOL_REGISTRY.values()
     ]
@@ -164,7 +164,7 @@ def get_tools_description() -> str:
             req = " (required)" if pname in required else ""
             params_desc.append(f"{pname}: {ptype}{req}")
         params_str = ", ".join(params_desc) if params_desc else "no parameters"
-        lines.append(f"  - name: \"{tool.name}\"")
+        lines.append(f'  - name: "{tool.name}"')
         lines.append(f"    description: {tool.description}")
         lines.append(f"    parameters: {{{params_str}}}")
     return "\n".join(lines)

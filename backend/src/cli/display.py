@@ -12,7 +12,13 @@ from typing import Optional, List, Any
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+)
 from rich.markdown import Markdown
 from rich.syntax import Syntax
 from rich.live import Live
@@ -22,17 +28,19 @@ from rich.style import Style
 from rich.theme import Theme
 
 # Custom theme for the research assistant
-RESEARCH_THEME = Theme({
-    "info": "cyan",
-    "warning": "yellow",
-    "error": "red bold",
-    "success": "green bold",
-    "agent": "blue bold",
-    "user": "magenta bold",
-    "phase": "yellow",
-    "paper": "cyan",
-    "highlight": "bold white on blue",
-})
+RESEARCH_THEME = Theme(
+    {
+        "info": "cyan",
+        "warning": "yellow",
+        "error": "red bold",
+        "success": "green bold",
+        "agent": "blue bold",
+        "user": "magenta bold",
+        "phase": "yellow",
+        "paper": "cyan",
+        "highlight": "bold white on blue",
+    }
+)
 
 
 class ResearchDisplay:
@@ -58,11 +66,13 @@ class ResearchDisplay:
 ║                   Intelligent Paper Discovery                    ║
 ╚══════════════════════════════════════════════════════════════════╝
         """
-        self.console.print(Panel(
-            Text(banner.strip(), justify="center"),
-            style="bold cyan",
-            border_style="cyan"
-        ))
+        self.console.print(
+            Panel(
+                Text(banner.strip(), justify="center"),
+                style="bold cyan",
+                border_style="cyan",
+            )
+        )
 
     def print_help(self):
         """Print help text."""
@@ -92,13 +102,15 @@ class ResearchDisplay:
     def print_agent(self, message: str):
         """Print agent message."""
         self.console.print()
-        self.console.print(Panel(
-            Markdown(message),
-            title="🤖 Agent",
-            title_align="left",
-            border_style="blue",
-            padding=(1, 2)
-        ))
+        self.console.print(
+            Panel(
+                Markdown(message),
+                title="🤖 Agent",
+                title_align="left",
+                border_style="blue",
+                padding=(1, 2),
+            )
+        )
 
     def print_agent_streaming_start(self):
         """Start streaming agent message."""
@@ -132,7 +144,9 @@ class ResearchDisplay:
             "error": "red bold",
         }
         color = state_colors.get(state, "white")
-        self.console.print(f"[{color}]◉ State: {state.upper()}[/{color}]", justify="right")
+        self.console.print(
+            f"[{color}]◉ State: {state.upper()}[/{color}]", justify="right"
+        )
 
     def print_phase(self, phase: str, status: str = "running"):
         """Print phase status."""
@@ -165,7 +179,9 @@ class ResearchDisplay:
         info_table = Table(show_header=False, box=None, padding=(0, 2))
         info_table.add_column("Key", style="dim")
         info_table.add_column("Value")
-        info_table.add_row("Mode", f"[bold]{plan.query_info.query_type.value.upper()}[/bold]")
+        info_table.add_row(
+            "Mode", f"[bold]{plan.query_info.query_type.value.upper()}[/bold]"
+        )
         info_table.add_row("Phases", ", ".join(plan.phase_config.active_phases))
         self.console.print(info_table)
 
@@ -197,9 +213,15 @@ class ResearchDisplay:
         table.add_column("Source", style="dim", width=10)
 
         for i, paper in enumerate(papers[:10], 1):
-            title_text = paper.title[:47] + "..." if len(paper.title) > 50 else paper.title
-            score = f"{paper.relevance_score:.1f}" if hasattr(paper, 'relevance_score') and paper.relevance_score else "N/A"
-            source = getattr(paper, 'source', 'unknown')
+            title_text = (
+                paper.title[:47] + "..." if len(paper.title) > 50 else paper.title
+            )
+            score = (
+                f"{paper.relevance_score:.1f}"
+                if hasattr(paper, "relevance_score") and paper.relevance_score
+                else "N/A"
+            )
+            source = getattr(paper, "source", "unknown")
             table.add_row(str(i), title_text, score, source)
 
         if len(papers) > 10:
@@ -210,8 +232,9 @@ class ResearchDisplay:
     def print_result(self, result: Any):
         """Print pipeline result summary."""
         self.console.print()
-        self.console.print(Panel(
-            f"""
+        self.console.print(
+            Panel(
+                f"""
 [bold]Research Complete![/bold]
 
 [cyan]Topic:[/cyan] {result.topic}
@@ -221,17 +244,16 @@ class ResearchDisplay:
 [cyan]Clusters:[/cyan] {result.clusters_created}
 [cyan]Cache Hit Rate:[/cyan] {result.cache_hit_rate:.1%}
             """.strip(),
-            title="📊 Results",
-            border_style="green"
-        ))
+                title="📊 Results",
+                border_style="green",
+            )
+        )
 
     def print_error(self, message: str):
         """Print error message."""
-        self.console.print(Panel(
-            f"[error]{message}[/error]",
-            title="❌ Error",
-            border_style="red"
-        ))
+        self.console.print(
+            Panel(f"[error]{message}[/error]", title="❌ Error", border_style="red")
+        )
 
     def print_warning(self, message: str):
         """Print warning message."""
@@ -252,7 +274,7 @@ class ResearchDisplay:
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             TaskProgressColumn(),
-            console=self.console
+            console=self.console,
         )
 
     def print_markdown(self, md_text: str):
@@ -302,7 +324,7 @@ class StreamingDisplay:
         phase: str = None,
         papers_collected: int = None,
         papers_analyzed: int = None,
-        message: str = None
+        message: str = None,
     ):
         """Update the display."""
         if phase is not None:
@@ -325,7 +347,7 @@ class StreamingDisplay:
 
         content.add_row(
             f"[bold]Phase:[/bold] [phase]{self.current_phase or 'Starting...'}[/phase]",
-            f"[dim]Papers: {self.papers_collected}[/dim]"
+            f"[dim]Papers: {self.papers_collected}[/dim]",
         )
 
         if self.status_message:

@@ -18,17 +18,19 @@ logger = logging.getLogger(__name__)
 
 class UserIntent(str, Enum):
     """Simplified user intents - 6 categories."""
-    CONFIRM = "confirm"      # User approves (yes, ok, proceed, đồng ý, 好的)
-    CANCEL = "cancel"        # User rejects (no, cancel, hủy, 不要)
-    EDIT = "edit"            # User wants to modify (add, remove, change)
+
+    CONFIRM = "confirm"  # User approves (yes, ok, proceed, đồng ý, 好的)
+    CANCEL = "cancel"  # User rejects (no, cancel, hủy, 不要)
+    EDIT = "edit"  # User wants to modify (add, remove, change)
     NEW_TOPIC = "new_topic"  # User provides research topic
-    CHAT = "chat"            # Casual conversation, greetings, questions about the agent
-    OTHER = "other"          # Unclear
+    CHAT = "chat"  # Casual conversation, greetings, questions about the agent
+    OTHER = "other"  # Unclear
 
 
 @dataclass
 class IntentResult:
     """Result of intent classification."""
+
     intent: UserIntent
     confidence: float
     edit_text: str  # For EDIT intent, the modification request
@@ -37,64 +39,155 @@ class IntentResult:
 
 
 # URL regex pattern
-_URL_PATTERN = re.compile(
-    r'https?://[^\s<>"\')\]]+',
-    re.IGNORECASE
-)
+_URL_PATTERN = re.compile(r'https?://[^\s<>"\')\]]+', re.IGNORECASE)
 
 
 # Multilingual keyword sets (extensible)
 CONFIRM_KEYWORDS: Set[str] = {
     # English - single words
-    "yes", "yeah", "yep", "ok", "okay", "sure", "proceed", "go",
-    "approved", "approve", "confirm", "start", "begin", "run", "execute",
-    "good", "fine", "great", "perfect", "lgtm", "alright", "right",
-    "absolutely", "definitely", "certainly", "affirmative", "y",
+    "yes",
+    "yeah",
+    "yep",
+    "ok",
+    "okay",
+    "sure",
+    "proceed",
+    "go",
+    "approved",
+    "approve",
+    "confirm",
+    "start",
+    "begin",
+    "run",
+    "execute",
+    "good",
+    "fine",
+    "great",
+    "perfect",
+    "lgtm",
+    "alright",
+    "right",
+    "absolutely",
+    "definitely",
+    "certainly",
+    "affirmative",
+    "y",
     # Vietnamese
-    "có", "đồng ý", "ok", "được", "tiếp tục", "chạy", "bắt đầu", "thực hiện",
+    "có",
+    "đồng ý",
+    "ok",
+    "được",
+    "tiếp tục",
+    "chạy",
+    "bắt đầu",
+    "thực hiện",
     # Chinese
-    "好", "好的", "可以", "行", "确认", "开始",
+    "好",
+    "好的",
+    "可以",
+    "行",
+    "确认",
+    "开始",
 }
 
 # Phrases that indicate confirmation (checked separately)
 CONFIRM_PHRASES: Set[str] = {
-    "do it", "let's go", "let's do it", "let do it", "go ahead",
-    "go for it", "sounds good", "looks good", "that works",
-    "make it so", "ship it", "let's start", "let's begin",
-    "i agree", "i approve", "thats fine", "that's fine",
+    "do it",
+    "let's go",
+    "let's do it",
+    "let do it",
+    "go ahead",
+    "go for it",
+    "sounds good",
+    "looks good",
+    "that works",
+    "make it so",
+    "ship it",
+    "let's start",
+    "let's begin",
+    "i agree",
+    "i approve",
+    "thats fine",
+    "that's fine",
 }
 
 CANCEL_KEYWORDS: Set[str] = {
     # English
-    "no", "nope", "nah", "cancel", "stop", "abort", "quit", "exit",
-    "nevermind", "forget", "don't", "reject",
+    "no",
+    "nope",
+    "nah",
+    "cancel",
+    "stop",
+    "abort",
+    "quit",
+    "exit",
+    "nevermind",
+    "forget",
+    "don't",
+    "reject",
     # Vietnamese
-    "không", "hủy", "dừng", "thôi", "bỏ", "hủy bỏ",
+    "không",
+    "hủy",
+    "dừng",
+    "thôi",
+    "bỏ",
+    "hủy bỏ",
     # Chinese
-    "不", "不要", "取消", "停止",
+    "不",
+    "不要",
+    "取消",
+    "停止",
 }
 
 # Casual/chat indicators - greetings, questions about the agent, small talk
 CHAT_KEYWORDS: Set[str] = {
     # English greetings
-    "hi", "hello", "hey", "howdy", "sup",
+    "hi",
+    "hello",
+    "hey",
+    "howdy",
+    "sup",
     # Vietnamese greetings
-    "chào", "xin",
+    "chào",
+    "xin",
     # Chinese greetings
-    "你好", "嗨",
+    "你好",
+    "嗨",
 }
 
 CHAT_PHRASES: Set[str] = {
     # English
-    "what is your name", "what's your name", "who are you", "what are you",
-    "how are you", "what can you do", "help me", "thank you", "thanks",
-    "good morning", "good afternoon", "good evening", "good night",
+    "what is your name",
+    "what's your name",
+    "who are you",
+    "what are you",
+    "how are you",
+    "what can you do",
+    "help me",
+    "thank you",
+    "thanks",
+    "good morning",
+    "good afternoon",
+    "good evening",
+    "good night",
     # Vietnamese
-    "tên là gì", "mày là gì", "mày là ai", "bạn là ai", "bạn tên gì",
-    "bạn là gì", "giúp tôi", "cảm ơn", "cám ơn", "làm gì được",
-    "bạn có thể làm gì", "chào bạn", "xin chào",
+    "tên là gì",
+    "mày là gì",
+    "mày là ai",
+    "bạn là ai",
+    "bạn tên gì",
+    "bạn là gì",
+    "giúp tôi",
+    "cảm ơn",
+    "cám ơn",
+    "làm gì được",
+    "bạn có thể làm gì",
+    "chào bạn",
+    "xin chào",
     # Chinese
-    "你叫什么", "你是谁", "谢谢",
+    "你叫什么",
+    "你是谁",
+    "谢谢",
 }
 
 
@@ -134,7 +227,7 @@ class IntentClassifier:
                 confidence=0.9,
                 edit_text="",
                 original_message=message,
-                extracted_urls=extracted_urls
+                extracted_urls=extracted_urls,
             )
 
         # Check CONFIRM phrases (multi-word expressions)
@@ -145,7 +238,7 @@ class IntentClassifier:
                     confidence=0.85,
                     edit_text="",
                     original_message=message,
-                    extracted_urls=extracted_urls
+                    extracted_urls=extracted_urls,
                 )
 
         # Check CANCEL
@@ -155,20 +248,32 @@ class IntentClassifier:
                 confidence=0.9,
                 edit_text="",
                 original_message=message,
-                extracted_urls=extracted_urls
+                extracted_urls=extracted_urls,
             )
 
         # Check EDIT (has modification keywords)
-        edit_indicators = {"add", "remove", "delete", "change", "modify", "update",
-                          "thêm", "xóa", "sửa", "đổi",  # Vietnamese
-                          "添加", "删除", "修改"}  # Chinese
+        edit_indicators = {
+            "add",
+            "remove",
+            "delete",
+            "change",
+            "modify",
+            "update",
+            "thêm",
+            "xóa",
+            "sửa",
+            "đổi",  # Vietnamese
+            "添加",
+            "删除",
+            "修改",
+        }  # Chinese
         if words & edit_indicators:
             return IntentResult(
                 intent=UserIntent.EDIT,
                 confidence=0.8,
                 edit_text=message,
                 original_message=message,
-                extracted_urls=extracted_urls
+                extracted_urls=extracted_urls,
             )
 
         # Check CHAT - greetings, questions about the agent, small talk
@@ -178,7 +283,7 @@ class IntentClassifier:
                 confidence=0.85,
                 edit_text="",
                 original_message=message,
-                extracted_urls=extracted_urls
+                extracted_urls=extracted_urls,
             )
 
         # Check CHAT phrases (multi-word)
@@ -189,7 +294,7 @@ class IntentClassifier:
                     confidence=0.9,
                     edit_text="",
                     original_message=message,
-                    extracted_urls=extracted_urls
+                    extracted_urls=extracted_urls,
                 )
 
         # If message is long enough, assume it's a new topic
@@ -199,7 +304,7 @@ class IntentClassifier:
                 confidence=0.7,
                 edit_text="",
                 original_message=message,
-                extracted_urls=extracted_urls
+                extracted_urls=extracted_urls,
             )
 
         # Fallback
@@ -208,26 +313,24 @@ class IntentClassifier:
             confidence=0.5,
             edit_text="",
             original_message=message,
-            extracted_urls=extracted_urls
+            extracted_urls=extracted_urls,
         )
 
-    async def classify_with_llm(
-        self,
-        message: str,
-        context: str = ""
-    ) -> IntentResult:
+    async def classify_with_llm(self, message: str, context: str = "", history: str = "") -> IntentResult:
         """
         Use LLM for intent classification.
 
         Args:
             message: User message
             context: Optional context about current state (e.g., "User was asked to confirm a plan")
+            history: Optional recent conversation history for context
         """
         if not self.llm:
             return self.classify(message)
 
         try:
             context_hint = f"\nContext: {context}" if context else ""
+            history_hint = f"\nRecent conversation:\n{history}" if history else ""
             prompt = f"""Classify user intent. Choose ONE:
 - confirm: User agrees, approves, or wants to proceed
 - cancel: User rejects, stops, or wants to abort
@@ -235,7 +338,7 @@ class IntentClassifier:
 - new_topic: User provides a NEW RESEARCH TOPIC to investigate (must be an academic/scientific topic)
 - chat: User is making casual conversation, greeting, asking about you, asking for help, or saying something NOT related to academic research
 - other: Unclear
-{context_hint}
+{context_hint}{history_hint}
 Message: "{message}"
 
 IMPORTANT: Only classify as "new_topic" if the message is clearly a research/academic topic the user wants to investigate. Greetings, questions about the assistant, small talk, and general questions should be "chat".
@@ -262,7 +365,7 @@ Reply with just the intent word (confirm/cancel/edit/new_topic/chat/other):"""
                 confidence=0.9,
                 edit_text=message if intent == UserIntent.EDIT else "",
                 original_message=message,
-                extracted_urls=self._extract_urls(message)
+                extracted_urls=self._extract_urls(message),
             )
 
         except Exception as e:

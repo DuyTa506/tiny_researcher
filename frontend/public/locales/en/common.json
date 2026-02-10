@@ -1,0 +1,98 @@
+{
+    "app": {
+        "name": "Tiny Researcher"
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "research": "Research",
+        "sessions": "Sessions",
+        "papers": "Papers",
+        "reports": "Reports",
+        "profile": "Profile"
+    },
+    "header": {
+        "searchPlaceholder": "Search papers, reports..."
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "heroTitle": "Research Assistant",
+        "heroSubtitle": "AI-powered paper discovery, evidence extraction, and citation-grounded report synthesis.",
+        "startResearch": "Start New Research",
+        "totalPapers": "Total Papers",
+        "screened": "Screened",
+        "reports": "Reports",
+        "activeResearch": "Active Research",
+        "weeklyActivity": "Weekly Activity",
+        "recentSessions": "Recent Sessions",
+        "viewAll": "View All",
+        "noSessions": "No research sessions yet",
+        "untitledResearch": "Untitled Research"
+    },
+    "research": {
+        "title": "Research",
+        "pipeline": "Research Pipeline",
+        "newResearch": "New Research",
+        "startConversation": "Start a conversation to begin",
+        "chatTitle": "Research Chat",
+        "new": "New",
+        "welcomeTitle": "Research Assistant",
+        "welcomeDesc": "Describe your research topic. I'll search papers, screen for relevance, extract evidence, and generate a citation-grounded report — all streamed live.",
+        "typePlaceholder": "Type a message…",
+        "topicPlaceholder": "Describe your research topic…",
+        "processing": "Processing",
+        "approvalRequired": "Approval Required",
+        "estimatedCost": "Estimated cost",
+        "approve": "Approve",
+        "skip": "Skip",
+        "cancel": "Cancel",
+        "screeningSummary": "Screening Summary",
+        "included": "Included",
+        "excluded": "Excluded"
+    },
+    "papers": {
+        "title": "Papers"
+    },
+    "reports": {
+        "title": "Reports"
+    },
+    "sessions": {
+        "title": "Sessions"
+    },
+    "profile": {
+        "title": "Profile"
+    },
+    "auth": {
+        "login": "Login",
+        "register": "Register",
+        "forgotPassword": "Forgot Password",
+        "resetPassword": "Reset Password",
+        "verify": "Verify"
+    },
+    "common": {
+        "loading": "Loading…",
+        "error": "Error",
+        "save": "Save",
+        "delete": "Delete",
+        "confirm": "Confirm",
+        "back": "Back"
+    },
+    "pipeline": {
+        "clarify": "Clarify",
+        "plan": "Plan",
+        "collect": "Collect & Dedup",
+        "screening": "Screening",
+        "hitl_gate": "Approval Gate",
+        "pdf_loading": "PDF Loading",
+        "evidence_extraction": "Evidence Extraction",
+        "clustering": "Clustering",
+        "taxonomy": "Taxonomy",
+        "claims_gaps": "Claims + Gaps",
+        "grounded_synthesis": "Grounded Synthesis",
+        "citation_audit": "Citation Audit"
+    },
+    "language": {
+        "en": "English",
+        "vi": "Tiếng Việt",
+        "switchLabel": "Language"
+    }
+}

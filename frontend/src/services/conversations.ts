@@ -4,13 +4,13 @@ import type { Conversation } from '@/lib/types';
 
 export const conversationService = {
     create: (topic?: string) =>
-        api.post<Conversation>('/conversations', { topic }),
+        api.post<Conversation>('/conversations', { user_id: 'anonymous' }),
 
     get: (id: string) =>
         api.get<Conversation>(`/conversations/${id}`),
 
     sendMessage: (id: string, content: string) =>
-        api.post(`/conversations/${id}/messages`, { content }),
+        api.post(`/conversations/${id}/messages`, { message: content }),
 
     delete: (id: string) =>
         api.delete(`/conversations/${id}`),
@@ -25,5 +25,5 @@ export const conversationService = {
         `${API_BASE_URL}/conversations/${id}/stream`,
 
     list: () =>
-        api.get<Conversation[]>('/conversations'),
+        api.get<{ items: Conversation[]; total: number }>('/conversations'),
 };

@@ -382,6 +382,13 @@ JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 NODE_ENV=production
 ```
 
+## Acknowledgments
+
+This project was inspired by and references:
+
+- **[LobeHub](https://github.com/lobehub/lobehub)** - Project structure and organization principles
+- **[UI/UX Pro Max Skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)** - UI/UX first design methodology
+
 ## License
 
 [Your License Here]

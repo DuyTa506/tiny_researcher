@@ -52,7 +52,9 @@ class AuthService:
             "exp": expire,
             "iat": datetime.now(timezone.utc),
         }
-        token = jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+        token = jwt.encode(
+            payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
+        )
         return token, int(expires_delta.total_seconds())
 
     @staticmethod
@@ -66,7 +68,9 @@ class AuthService:
             "iat": datetime.now(timezone.utc),
             "jti": secrets.token_hex(16),
         }
-        return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+        return jwt.encode(
+            payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
+        )
 
     @staticmethod
     def decode_token(token: str) -> Optional[dict]:
@@ -119,10 +123,12 @@ class AuthService:
         return None
 
     async def get_user_by_oauth(self, provider: str, oauth_id: str) -> Optional[User]:
-        doc = await self.collection.find_one({
-            "oauth_provider": provider,
-            "oauth_id": oauth_id,
-        })
+        doc = await self.collection.find_one(
+            {
+                "oauth_provider": provider,
+                "oauth_id": oauth_id,
+            }
+        )
         if doc:
             doc["_id"] = str(doc["_id"])
             return User(**doc)
@@ -149,7 +155,9 @@ class AuthService:
         if existing:
             raise ValueError("Username already taken")
 
-        verification_token = self.generate_verification_token() if not email_verified else None
+        verification_token = (
+            self.generate_verification_token() if not email_verified else None
+        )
 
         user = User(
             email=email,
@@ -173,7 +181,13 @@ class AuthService:
         """Mark user as verified if token matches."""
         result = await self.collection.update_one(
             {"verification_token": token, "email_verified": False},
-            {"$set": {"email_verified": True, "verification_token": None, "updated_at": datetime.now()}},
+            {
+                "$set": {
+                    "email_verified": True,
+                    "verification_token": None,
+                    "updated_at": datetime.now(),
+                }
+            },
         )
         return result.modified_count > 0
 
@@ -187,31 +201,37 @@ class AuthService:
         expires = datetime.now() + timedelta(hours=1)
         await self.collection.update_one(
             {"_id": ObjectId(user.id)},
-            {"$set": {
-                "reset_token": token,
-                "reset_token_expires": expires,
-                "updated_at": datetime.now(),
-            }},
+            {
+                "$set": {
+                    "reset_token": token,
+                    "reset_token_expires": expires,
+                    "updated_at": datetime.now(),
+                }
+            },
         )
         return token
 
     async def reset_password(self, token: str, new_password: str) -> bool:
         """Reset password using a valid reset token."""
-        doc = await self.collection.find_one({
-            "reset_token": token,
-            "reset_token_expires": {"$gt": datetime.now()},
-        })
+        doc = await self.collection.find_one(
+            {
+                "reset_token": token,
+                "reset_token_expires": {"$gt": datetime.now()},
+            }
+        )
         if not doc:
             return False
 
         await self.collection.update_one(
             {"_id": doc["_id"]},
-            {"$set": {
-                "password_hash": self.hash_password(new_password),
-                "reset_token": None,
-                "reset_token_expires": None,
-                "updated_at": datetime.now(),
-            }},
+            {
+                "$set": {
+                    "password_hash": self.hash_password(new_password),
+                    "reset_token": None,
+                    "reset_token_expires": None,
+                    "updated_at": datetime.now(),
+                }
+            },
         )
         return True
 
@@ -229,16 +249,20 @@ class AuthService:
         )
         return await self.get_user_by_id(user_id)
 
-    async def change_password(self, user_id: str, current_password: str, new_password: str) -> bool:
+    async def change_password(
+        self, user_id: str, current_password: str, new_password: str
+    ) -> bool:
         user = await self.get_user_by_id(user_id)
         if not user or not self.verify_password(current_password, user.password_hash):
             return False
         await self.collection.update_one(
             {"_id": ObjectId(user_id)},
-            {"$set": {
-                "password_hash": self.hash_password(new_password),
-                "updated_at": datetime.now(),
-            }},
+            {
+                "$set": {
+                    "password_hash": self.hash_password(new_password),
+                    "updated_at": datetime.now(),
+                }
+            },
         )
         return True
 
@@ -255,5 +279,7 @@ class AuthService:
         await self.collection.create_index("username", unique=True)
         await self.collection.create_index("verification_token", sparse=True)
         await self.collection.create_index("reset_token", sparse=True)
-        await self.collection.create_index([("oauth_provider", 1), ("oauth_id", 1)], sparse=True)
+        await self.collection.create_index(
+            [("oauth_provider", 1), ("oauth_id", 1)], sparse=True
+        )
         logger.info("User indexes created")

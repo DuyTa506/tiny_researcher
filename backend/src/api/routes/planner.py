@@ -21,9 +21,11 @@ from src.adapters.llm import LLMFactory
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+
 # Dependency: Get plan store instance
 def get_plan_store() -> PlanStore:
     return PlanStore()
+
 
 # Dependency: Get planner service with LLM
 def get_planner_service() -> PlannerService:
@@ -37,11 +39,14 @@ def get_planner_service() -> PlannerService:
 
 # --- Request/Response Models ---
 
+
 class CreatePlanRequest(BaseModel):
     topic: str = Field(..., description="Research topic")
     keywords: List[str] = Field(default_factory=list, description="Seed keywords")
     sources: List[str] = Field(default_factory=list, description="URLs to include")
-    research_questions: List[str] = Field(default_factory=list, description="Specific questions")
+    research_questions: List[str] = Field(
+        default_factory=list, description="Specific questions"
+    )
     language: str = Field("vi", description="Output language")
 
 
@@ -60,11 +65,12 @@ class PlanResponse(BaseModel):
 
 # --- Endpoints ---
 
+
 @router.post("", response_model=PlanResponse)
 async def create_plan(
     request: CreatePlanRequest,
     planner: PlannerService = Depends(get_planner_service),
-    store: PlanStore = Depends(get_plan_store)
+    store: PlanStore = Depends(get_plan_store),
 ):
     """
     Generate a new research plan from topic.
@@ -75,50 +81,45 @@ async def create_plan(
         topic=request.topic,
         keywords=request.keywords,
         sources=request.sources,
-        research_questions=request.research_questions
+        research_questions=request.research_questions,
     )
     research_request.output_config.language = request.language
-    
+
     # Generate plan
     plan = await planner.generate_research_plan(research_request)
-    
+
     # Store plan
     stored = store.create(plan)
-    
+
     return PlanResponse(
         plan_id=stored.plan_id,
         status=stored.status.value,
         plan=plan.model_dump(),
         display=plan.to_display(),
-        progress=stored.progress.model_dump()
+        progress=stored.progress.model_dump(),
     )
 
 
 @router.get("/{plan_id}", response_model=PlanResponse)
-async def get_plan(
-    plan_id: str,
-    store: PlanStore = Depends(get_plan_store)
-):
+async def get_plan(plan_id: str, store: PlanStore = Depends(get_plan_store)):
     """Get plan by ID."""
     stored = store.get(plan_id)
     if not stored:
         raise HTTPException(status_code=404, detail="Plan not found")
-    
+
     return PlanResponse(
         plan_id=stored.plan_id,
         status=stored.status.value,
         plan=stored.plan.model_dump(),
         display=stored.plan.to_display(),
         progress=stored.progress.model_dump(),
-        results=stored.results if stored.results else None
+        results=stored.results if stored.results else None,
     )
 
 
 @router.put("/{plan_id}", response_model=PlanResponse)
 async def update_plan(
-    plan_id: str,
-    request: UpdatePlanRequest,
-    store: PlanStore = Depends(get_plan_store)
+    plan_id: str, request: UpdatePlanRequest, store: PlanStore = Depends(get_plan_store)
 ):
     """
     Update/edit plan steps.
@@ -127,13 +128,12 @@ async def update_plan(
     stored = store.get(plan_id)
     if not stored:
         raise HTTPException(status_code=404, detail="Plan not found")
-    
+
     if stored.status != PlanStatus.DRAFT:
         raise HTTPException(
-            status_code=400, 
-            detail=f"Cannot edit plan in '{stored.status}' status"
+            status_code=400, detail=f"Cannot edit plan in '{stored.status}' status"
         )
-    
+
     # Update steps
     updated_steps = []
     for step_data in request.steps:
@@ -144,35 +144,32 @@ async def update_plan(
             description=step_data.get("description", ""),
             queries=step_data.get("queries", []),
             sources=step_data.get("sources", []),
-            completed=step_data.get("completed", False)
+            completed=step_data.get("completed", False),
         )
         updated_steps.append(step)
-    
+
     # Create updated plan
     updated_plan = ResearchPlan(
         topic=stored.plan.topic,
         summary=stored.plan.summary,
         steps=updated_steps,
-        language=stored.plan.language
+        language=stored.plan.language,
     )
-    
+
     # Save
     stored = store.update(plan_id, updated_plan)
-    
+
     return PlanResponse(
         plan_id=stored.plan_id,
         status=stored.status.value,
         plan=stored.plan.model_dump(),
         display=stored.plan.to_display(),
-        progress=stored.progress.model_dump()
+        progress=stored.progress.model_dump(),
     )
 
 
 @router.post("/{plan_id}/execute")
-async def execute_plan(
-    plan_id: str,
-    store: PlanStore = Depends(get_plan_store)
-):
+async def execute_plan(plan_id: str, store: PlanStore = Depends(get_plan_store)):
     """
     Start executing the plan.
     (Phase 2: Will integrate PlanExecutor)
@@ -180,33 +177,30 @@ async def execute_plan(
     stored = store.get(plan_id)
     if not stored:
         raise HTTPException(status_code=404, detail="Plan not found")
-    
+
     if stored.status == PlanStatus.EXECUTING:
         raise HTTPException(status_code=400, detail="Plan already executing")
-    
+
     if stored.status == PlanStatus.COMPLETED:
         raise HTTPException(status_code=400, detail="Plan already completed")
-    
+
     # Update status to executing
     store.update_status(plan_id, PlanStatus.EXECUTING)
-    
+
     # TODO: Trigger PlanExecutor in background task
     # For now, just return status
-    
+
     return {
         "plan_id": plan_id,
         "status": "executing",
-        "message": "Execution started. Poll GET /plan/{id} for progress."
+        "message": "Execution started. Poll GET /plan/{id} for progress.",
     }
 
 
 @router.delete("/{plan_id}")
-async def delete_plan(
-    plan_id: str,
-    store: PlanStore = Depends(get_plan_store)
-):
+async def delete_plan(plan_id: str, store: PlanStore = Depends(get_plan_store)):
     """Delete a plan."""
     if not store.delete(plan_id):
         raise HTTPException(status_code=404, detail="Plan not found")
-    
+
     return {"message": "Plan deleted"}

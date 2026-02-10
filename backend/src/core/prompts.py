@@ -1,4 +1,3 @@
-
 from typing import Dict, Any
 
 # Shared JSON output contract - prepended to all JSON-returning prompts.
@@ -376,6 +375,7 @@ class PromptManager:
         if not template:
             raise ValueError(f"Prompt template '{template_name}' not found.")
         return template.format(**kwargs)
+
 
 # Global instance not strictly needed if using static methods, but good for DI pattern if we want to change it later.
 prompt_manager = PromptManager()

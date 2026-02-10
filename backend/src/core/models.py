@@ -13,18 +13,20 @@ import uuid
 
 class PaperStatus(str, Enum):
     """Status of paper processing."""
-    RAW = "raw"           # Just collected
-    SCREENED = "screened" # Title/abstract screening completed
-    FULLTEXT = "fulltext" # Full text loaded
-    EXTRACTED = "extracted" # Evidence extracted
-    SCORED = "scored"     # Relevance scored (legacy)
+
+    RAW = "raw"  # Just collected
+    SCREENED = "screened"  # Title/abstract screening completed
+    FULLTEXT = "fulltext"  # Full text loaded
+    EXTRACTED = "extracted"  # Evidence extracted
+    SCORED = "scored"  # Relevance scored (legacy)
     SUMMARIZED = "summarized"  # Summary extracted (legacy)
-    INDEXED = "indexed"   # In vector store
-    REPORTED = "reported" # Included in final report
+    INDEXED = "indexed"  # In vector store
+    REPORTED = "reported"  # Included in final report
 
 
 class PaperSummary(BaseModel):
     """Extracted summary from a paper."""
+
     problem: str = ""
     approach: str = ""
     results: str = ""
@@ -34,6 +36,7 @@ class PaperSummary(BaseModel):
 
 class Paper(BaseModel):
     """Paper document for MongoDB."""
+
     # Identifiers
     id: Optional[str] = Field(None, alias="_id")
     arxiv_id: Optional[str] = None
@@ -91,25 +94,27 @@ class Paper(BaseModel):
             published_date=data.get("published"),
             source=source,
             url=data.get("url"),
-            pdf_url=data.get("pdf_url")
+            pdf_url=data.get("pdf_url"),
         )
 
 
 class Cluster(BaseModel):
     """Cluster of related papers."""
+
     id: Optional[str] = Field(None, alias="_id")
     name: str
     description: str = ""
     paper_ids: List[str] = Field(default_factory=list)
     plan_id: str
     created_at: datetime = Field(default_factory=datetime.now)
-    
+
     class Config:
         populate_by_name = True
 
 
 class Report(BaseModel):
     """Generated research report."""
+
     id: Optional[str] = Field(None, alias="_id")
     plan_id: str
     title: str
@@ -134,6 +139,7 @@ class Locator(BaseModel):
     Tracks where evidence was found in the source document.
     Best-effort: page number if available, otherwise section/char offsets.
     """
+
     page: Optional[int] = None  # PDF page number
     section: Optional[str] = None  # Section heading if parseable
     char_start: Optional[int] = None  # Character offset in full text
@@ -146,11 +152,14 @@ class EvidenceSpan(BaseModel):
     Core primitive for citation-first workflow. Every claim in the
     final report must reference at least one EvidenceSpan.
     """
+
     span_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     paper_id: str  # Reference to Paper.id
 
     # What kind of evidence is this?
-    field: Literal["problem", "method", "dataset", "metric", "result", "limitation", "other"]
+    field: Literal[
+        "problem", "method", "dataset", "metric", "result", "limitation", "other"
+    ]
 
     # The evidence itself
     snippet: str = Field(..., max_length=300)  # Short quote from paper
@@ -171,6 +180,7 @@ class StudyCard(BaseModel):
     Replaces the loose PaperSummary with schema-driven extraction.
     All fields MUST be backed by EvidenceSpans for auditability.
     """
+
     card_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     paper_id: str
 
@@ -205,6 +215,7 @@ class ScreeningRecord(BaseModel):
 
     The `include` field is derived from tier for backward compatibility.
     """
+
     record_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     paper_id: str
 
@@ -234,6 +245,7 @@ class Claim(BaseModel):
     statement backed by ≥1 evidence spans. The final report is composed
     entirely of cited claims.
     """
+
     claim_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     claim_text: str  # The assertion (1-3 sentences)
 
@@ -261,6 +273,7 @@ class TaxonomyMatrix(BaseModel):
     Multi-dimensional matrix showing coverage across themes, datasets,
     metrics, and method families. Used to identify gaps for future work.
     """
+
     id: Optional[str] = Field(None, alias="_id")
     plan_id: Optional[str] = None
 
@@ -282,6 +295,7 @@ class TaxonomyMatrix(BaseModel):
 
 class PageInfo(BaseModel):
     """Page-level metadata for PDF locator tracking."""
+
     text: str
     char_start: int
     char_end: int
@@ -313,6 +327,7 @@ class UserUsageStats(BaseModel):
 
 class User(BaseModel):
     """User account document for MongoDB."""
+
     id: Optional[str] = Field(None, alias="_id")
     email: str
     username: str

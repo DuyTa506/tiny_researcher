@@ -1,9 +1,11 @@
 .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
     overflow: hidden;
     animation: slideUp 0.3s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 @keyframes slideUp {
@@ -23,11 +25,11 @@
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-3) var(--space-4);
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(139, 92, 246, 0.08));
-    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(129, 140, 248, 0.06));
+    border-bottom: 1px solid var(--color-border);
     font-weight: 600;
     font-size: 0.85rem;
-    color: var(--text-primary);
+    color: var(--color-text);
 }
 
 .mode {
@@ -38,16 +40,16 @@
     letter-spacing: 0.08em;
     padding: 2px 8px;
     border-radius: var(--radius-sm);
-    background: var(--primary-muted);
-    color: var(--primary);
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--color-primary);
 }
 
 .summary {
     padding: var(--space-3) var(--space-4);
     font-size: 0.82rem;
-    color: var(--text-secondary);
+    color: var(--color-text-muted);
     line-height: 1.5;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .steps {
@@ -61,8 +63,8 @@
     align-items: flex-start;
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--border);
-    transition: background 0.15s;
+    border-bottom: 1px solid var(--color-border);
+    transition: background var(--duration-fast) var(--ease-out);
 }
 
 .step:last-child {
@@ -70,7 +72,7 @@
 }
 
 .step:hover {
-    background: var(--bg-secondary);
+    background: var(--color-border-light);
 }
 
 .stepNumber {
@@ -78,22 +80,22 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: var(--bg-secondary);
+    background: var(--color-border-light);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.72rem;
     font-weight: 700;
-    color: var(--text-muted);
+    color: var(--color-text-light);
 }
 
 .stepCompleted {
-    background: var(--success);
+    background: var(--color-success);
     color: white;
 }
 
 .stepActive {
-    background: var(--primary);
+    background: var(--color-primary);
     color: white;
 }
 
@@ -105,13 +107,13 @@
 .stepTitle {
     font-size: 0.82rem;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--color-text);
     margin-bottom: 2px;
 }
 
 .stepDesc {
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: var(--color-text-light);
     line-height: 1.4;
 }
 
@@ -126,6 +128,6 @@
     font-size: 0.68rem;
     padding: 1px 6px;
     border-radius: var(--radius-sm);
-    background: var(--bg-secondary);
-    color: var(--text-muted);
+    background: var(--color-border-light);
+    color: var(--color-text-light);
 }

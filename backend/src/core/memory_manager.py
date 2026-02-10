@@ -30,14 +30,22 @@ class ResearchSession:
     - Directions/clusters identified
     - Phase transitions
     """
+
     session_id: str
     topic: str
     created_at: datetime
     updated_at: datetime
 
     # Phase tracking
-    current_phase: str = "idle"  # idle, planning, execution, analysis, synthesis, complete
+    current_phase: str = (
+        "idle"  # idle, planning, execution, analysis, synthesis, complete
+    )
     phases_completed: List[str] = field(default_factory=list)
+    
+    # Detailed progress
+    phase_message: Optional[str] = None
+    step_index: int = 0
+    total_steps: int = 0
 
     # Paper tracking
     total_papers: int = 0
@@ -79,11 +87,7 @@ class ResearchMemoryManager:
 
     SESSION_TTL = 86400  # 24 hours
 
-    def __init__(
-        self,
-        redis_url: str = None,
-        paper_repo: PaperRepository = None
-    ):
+    def __init__(self, redis_url: str = None, paper_repo: PaperRepository = None):
         """
         Initialize memory manager.
 
@@ -106,7 +110,7 @@ class ResearchMemoryManager:
             self.redis = await aioredis.from_url(
                 self.redis_url,
                 encoding="utf-8",
-                decode_responses=False  # We'll handle serialization
+                decode_responses=False,  # We'll handle serialization
             )
             await self.redis.ping()
             logger.info("ResearchMemoryManager connected to Redis")
@@ -138,7 +142,7 @@ class ResearchMemoryManager:
             topic=topic,
             created_at=now,
             updated_at=now,
-            plan_id=plan_id
+            plan_id=plan_id,
         )
 
         # Store in hot layer
@@ -178,10 +182,7 @@ class ResearchMemoryManager:
         return None
 
     async def register_paper(
-        self,
-        session_id: str,
-        paper: Paper,
-        skip_dedup: bool = False
+        self, session_id: str, paper: Paper, skip_dedup: bool = False
     ) -> bool:
         """
         Register a paper in the session.
@@ -231,13 +232,16 @@ class ResearchMemoryManager:
         """Get all papers for a session."""
         return self._paper_registry.get(session_id, [])
 
-    async def transition_phase(self, session_id: str, new_phase: str):
+    async def transition_phase(self, session_id: str, new_phase: str, message: str = "", step_index: int = None, total_steps: int = None):
         """
         Transition session to a new phase.
 
         Args:
             session_id: Session ID
             new_phase: New phase name
+            message: Optional status message
+            step_index: Optional current step
+            total_steps: Optional total steps
         """
         session = await self.get_session(session_id)
         if not session:
@@ -247,9 +251,16 @@ class ResearchMemoryManager:
             session.phases_completed.append(session.current_phase)
 
         session.current_phase = new_phase
+        if message:
+            session.phase_message = message
+        if step_index is not None:
+            session.step_index = step_index
+        if total_steps is not None:
+            session.total_steps = total_steps
+            
         session.updated_at = datetime.utcnow()
 
-        logger.info(f"Session {session_id} transitioned to phase: {new_phase}")
+        logger.info(f"Session {session_id} transitioned to phase: {new_phase} ({message})")
 
         # Save checkpoint
         if self.redis:
@@ -271,29 +282,25 @@ class ResearchMemoryManager:
 
         # Convert session to dict and handle datetime serialization
         session_dict = asdict(session)
-        session_dict['created_at'] = session.created_at.isoformat()
-        session_dict['updated_at'] = session.updated_at.isoformat()
+        session_dict["created_at"] = session.created_at.isoformat()
+        session_dict["updated_at"] = session.updated_at.isoformat()
 
         checkpoint_data = {
             "session": session_dict,
             "papers_count": len(papers),
             "phase_id": phase_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
         if self.redis:
             key = f"checkpoint:{session_id}:{phase_id}"
-            await self.redis.setex(
-                key,
-                self.SESSION_TTL,
-                json.dumps(checkpoint_data)
+            await self.redis.setex(key, self.SESSION_TTL, json.dumps(checkpoint_data))
+            logger.info(
+                f"Checkpoint saved for session {session_id} at phase {phase_id}"
             )
-            logger.info(f"Checkpoint saved for session {session_id} at phase {phase_id}")
 
     async def restore_from_checkpoint(
-        self,
-        session_id: str,
-        phase_id: str
+        self, session_id: str, phase_id: str
     ) -> Optional[ResearchSession]:
         """
         Restore session from a checkpoint.
@@ -333,7 +340,10 @@ class ResearchMemoryManager:
                 high_relevance_papers=session_dict["high_relevance_papers"],
                 plan_id=session_dict.get("plan_id"),
                 report_id=session_dict.get("report_id"),
-                metadata=session_dict.get("metadata", {})
+                metadata=session_dict.get("metadata", {}),
+                phase_message=session_dict.get("phase_message"),
+                step_index=session_dict.get("step_index", 0),
+                total_steps=session_dict.get("total_steps", 0),
             )
 
             # Promote to hot layer
@@ -371,7 +381,7 @@ class ResearchMemoryManager:
         dates = [p.published_date for p in papers if p.published_date]
         date_range = {
             "earliest": min(dates) if dates else None,
-            "latest": max(dates) if dates else None
+            "latest": max(dates) if dates else None,
         }
 
         # Calculate source distribution
@@ -388,7 +398,7 @@ class ResearchMemoryManager:
             "high_relevance_papers": session.high_relevance_papers,
             "date_range": date_range,
             "sources": sources,
-            "current_phase": session.current_phase
+            "current_phase": session.current_phase,
         }
 
     async def _save_session_to_redis(self, session: ResearchSession):
@@ -403,7 +413,9 @@ class ResearchMemoryManager:
         except Exception as e:
             logger.error(f"Error saving session to Redis: {e}")
 
-    async def _load_session_from_redis(self, session_id: str) -> Optional[ResearchSession]:
+    async def _load_session_from_redis(
+        self, session_id: str
+    ) -> Optional[ResearchSession]:
         """Load session from Redis."""
         if not self.redis:
             return None
@@ -429,7 +441,10 @@ class ResearchMemoryManager:
                 high_relevance_papers=session_dict["high_relevance_papers"],
                 plan_id=session_dict.get("plan_id"),
                 report_id=session_dict.get("report_id"),
-                metadata=session_dict.get("metadata", {})
+                metadata=session_dict.get("metadata", {}),
+                phase_message=session_dict.get("phase_message"),
+                step_index=session_dict.get("step_index", 0),
+                total_steps=session_dict.get("total_steps", 0),
             )
         except Exception as e:
             logger.error(f"Error loading session from Redis: {e}")

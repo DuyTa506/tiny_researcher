@@ -1,6 +1,15 @@
-# Frontend Development Guide
+# Tiny Researcher - Frontend
 
-Modern Next.js frontend for the Tiny Researcher research assistant.
+Modern Next.js frontend for the Tiny Researcher research assistant, featuring a glassmorphism design system with academic elegance.
+
+## 🎨 Design System
+
+**Visual Style:** Glassmorphism (frosted glass effects, transparent layers, blurred backgrounds)
+**Color Palette:** Indigo primary (#6366F1) + Emerald CTAs (#10B981)
+**Typography:** Crimson Pro (headings) + Atkinson Hyperlegible (body)
+**Target:** Modern, professional, academic research tool
+
+📖 **Full documentation:** See [CLAUDE.md](./CLAUDE.md) for development guidelines.
 
 ## Tech Stack
 
@@ -13,6 +22,7 @@ Modern Next.js frontend for the Tiny Researcher research assistant.
 - **Icons**: lucide-react
 - **Markdown**: react-markdown, remark-gfm
 - **Charts**: Recharts
+- **i18n**: react-i18next (EN/VI)
 
 ## Project Structure
 
@@ -47,7 +57,8 @@ frontend/
 │   │   ├── constants.ts       # App constants
 │   │   └── utils.ts           # Utility functions
 │   └── styles/
-│       └── globals.css        # Global styles + design system
+│       ├── tokens.css           # Design system tokens
+│       └── globals.css          # Global styles
 ├── public/                     # Static assets
 ├── Dockerfile
 ├── next.config.ts
@@ -113,25 +124,28 @@ npm run type-check
 
 ### UI Components (`components/ui/`)
 
-- **Button** - Primary, secondary, ghost, danger variants
-- **Card** - Container with optional glass effect
-- **Badge** - Color-coded status indicators
-- **Input** - Form input with label and error
-- **Modal** - Portal-based dialog
-- **Skeleton** - Loading placeholders
+- **Button** - Primary gradient, CTA, ghost, outline variants with loading states
+- **Card** - Container with glassmorphism effects
+- **Badge** - Color-coded status indicators (high/medium/low/info)
+- **Input** - Form input with indigo focus glow, validation states
+- **Modal** - Portal-based dialog with backdrop blur
+- **Skeleton** - Shimmer loading placeholders
+- **Toast** - Notification system
 
 ### Layout Components (`components/layout/`)
 
-- **AppShell** - Main layout wrapper
-- **Header** - Top navigation bar
-- **Sidebar** - Side navigation
+- **AppShell** - Main layout with floating navbar
+- **Header** - Glass header with search and theme toggle
+- **Sidebar** - Glass sidebar with mobile hamburger menu
 
 ### Chat Components (`components/chat/`)
 
-- **ThinkingBubble** - LLM thinking indicator
-- **StreamingText** - Real-time text streaming
-- **PlanCard** - Research plan display
+- **ThinkingBubble** - Animated gradient thinking indicator
+- **StreamingText** - Real-time text streaming with typewriter effect
+- **PlanCard** - Research plan with gradient headers
 - **ActivityLog** - Pipeline activity timeline
+- **ClaimsCard** - Claims display with evidence links
+- **TaxonomyPreview** - Taxonomy matrix visualization
 
 ## Services
 
@@ -255,18 +269,24 @@ function ResearchPage() {
 
 ## Styling
 
-### Design System
+### Design System (Updated 2026)
 
-Global CSS variables in `globals.css`:
+The application uses a comprehensive glassmorphism design system with design tokens in `src/styles/tokens.css`:
 
 ```css
 :root {
-  /* Colors */
-  --primary: #3b82f6;
-  --accent: #8b5cf6;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --error: #ef4444;
+  /* Colors - Indigo/Emerald palette */
+  --color-primary: #6366F1;
+  --color-secondary: #818CF8;
+  --color-cta: #10B981;
+  --color-background: #F5F3FF;
+  --color-text: #1E1B4B;
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --blur-sm: 10px;
+  --blur-md: 20px;
 
   /* Spacing */
   --space-xs: 0.25rem;
@@ -276,11 +296,46 @@ Global CSS variables in `globals.css`:
   --space-xl: 2rem;
 
   /* Typography */
+  --font-heading: 'Crimson Pro', serif;
+  --font-body: 'Atkinson Hyperlegible', sans-serif;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
   --text-lg: 1.125rem;
-  --text-xl: 1.25rem;
+}
+```
+
+### Glassmorphism Components
+
+```tsx
+// Glass card example
+<div className="glass-card">
+  <h2>Paper Title</h2>
+  <p>Abstract...</p>
+</div>
+```
+
+```css
+/* styles.module.css */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-sm));
+  -webkit-backdrop-filter: blur(var(--blur-sm));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-glass);
+}
+```
+
+### Dark Mode
+
+Automatic dark mode support via `data-theme` attribute:
+
+```css
+[data-theme='dark'] {
+  --color-background: #0F172A;
+  --color-text: #F1F5F9;
+  --glass-bg: rgba(30, 41, 59, 0.7);
 }
 ```
 
@@ -388,4 +443,21 @@ Build output:
 - `.next/static/` - Static assets
 - `public/` - Public assets
 
-For full documentation, see the main README.md in the project root.
+**Browser Support:**
+- Chrome/Edge 87+
+- Firefox 85+
+- Safari 14.1+
+
+## Accessibility
+
+✅ WCAG AA compliant
+✅ Keyboard navigation support
+✅ Screen reader friendly
+✅ Touch targets meet 44x44px minimum
+✅ Color contrast ratios meet 4.5:1 minimum
+✅ Respects prefers-reduced-motion
+
+## Documentation
+
+- **[CLAUDE.md](./CLAUDE.md)** - Development guidelines for AI assistants
+- **Main README** - See project root for full documentation

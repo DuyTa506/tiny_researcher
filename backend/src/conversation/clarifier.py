@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 
 class QueryComplexity(str, Enum):
     """How complex is the query?"""
-    SIMPLE = "simple"      # Clear, single objective
+
+    SIMPLE = "simple"  # Clear, single objective
     COMPOUND = "compound"  # Multiple related objectives
     AMBIGUOUS = "ambiguous"  # Unclear terms or goals
 
@@ -25,6 +26,7 @@ class QueryComplexity(str, Enum):
 @dataclass
 class ClarificationResult:
     """Result of query analysis."""
+
     needs_clarification: bool
     complexity: QueryComplexity
     questions: List[str] = field(default_factory=list)
@@ -36,21 +38,36 @@ class ClarificationResult:
 
 # Compound query indicators
 COMPOUND_INDICATORS = [
-    " and ", " then ", " also ", " plus ",
-    " và ", " rồi ", " thêm ",  # Vietnamese
+    " and ",
+    " then ",
+    " also ",
+    " plus ",
+    " và ",
+    " rồi ",
+    " thêm ",  # Vietnamese
     ", ",  # Comma often separates objectives
 ]
 
 # Goal ambiguity indicators (needs goal clarification)
 GOAL_INDICATORS = [
-    "find", "search", "look for", "get",
-    "tìm", "kiếm",  # Vietnamese
+    "find",
+    "search",
+    "look for",
+    "get",
+    "tìm",
+    "kiếm",  # Vietnamese
 ]
 
 # Exploration indicators (theoretical vs existing work)
 EXPLORATION_WORDS = [
-    "can", "could", "possible", "if", "whether", "how to",
-    "có thể", "liệu",  # Vietnamese
+    "can",
+    "could",
+    "possible",
+    "if",
+    "whether",
+    "how to",
+    "có thể",
+    "liệu",  # Vietnamese
 ]
 
 
@@ -67,7 +84,7 @@ class QueryClarifier:
     def __init__(self, llm_client: Optional[LLMClientInterface] = None):
         self.llm = llm_client
 
-    async def analyze(self, query: str) -> ClarificationResult:
+    async def analyze(self, query: str, conversation_history: str = "") -> ClarificationResult:
         """
         Analyze a query and determine if clarification is needed.
 
@@ -81,14 +98,12 @@ class QueryClarifier:
         # Simple queries don't need clarification
         if complexity == QueryComplexity.SIMPLE and len(query.split()) < 6:
             return ClarificationResult(
-                needs_clarification=False,
-                complexity=complexity,
-                original_query=query
+                needs_clarification=False, complexity=complexity, original_query=query
             )
 
         # Use LLM for smart analysis if available
         if self.llm:
-            return await self._analyze_with_llm(query, complexity)
+            return await self._analyze_with_llm(query, complexity, conversation_history)
 
         # Rule-based fallback
         return self._analyze_with_rules(query, complexity)
@@ -114,9 +129,7 @@ class QueryClarifier:
         return QueryComplexity.SIMPLE
 
     def _analyze_with_rules(
-        self,
-        query: str,
-        complexity: QueryComplexity
+        self, query: str, complexity: QueryComplexity
     ) -> ClarificationResult:
         """Rule-based query analysis."""
         questions = []
@@ -128,7 +141,9 @@ class QueryClarifier:
             # Try to split
             for indicator in COMPOUND_INDICATORS:
                 if indicator in query_lower:
-                    parts = query.split(indicator[0] if indicator.startswith(" ") else indicator)
+                    parts = query.split(
+                        indicator[0] if indicator.startswith(" ") else indicator
+                    )
                     sub_queries = [p.strip() for p in parts if len(p.strip()) > 3]
                     break
 
@@ -155,7 +170,7 @@ class QueryClarifier:
             questions=questions[:2],  # Max 2 questions
             understanding=understanding,
             sub_queries=sub_queries,
-            original_query=query
+            original_query=query,
         )
 
     def _detect_language(self, query: str) -> str:
@@ -166,25 +181,58 @@ class QueryClarifier:
         words = query_lower.split()
 
         # Vietnamese indicators (common words that are unique to Vietnamese)
-        vietnamese_words = ['chào', 'tôi', 'cho', 'tìm', 'về', 'có', 'là', 'của', 'và', 'được', 'này', 'đó', 'muốn', 'bạn', 'nghiên', 'cứu']
+        vietnamese_words = [
+            "chào",
+            "tôi",
+            "cho",
+            "tìm",
+            "về",
+            "có",
+            "là",
+            "của",
+            "và",
+            "được",
+            "này",
+            "đó",
+            "muốn",
+            "bạn",
+            "nghiên",
+            "cứu",
+        ]
         vietnamese_count = sum(1 for word in vietnamese_words if word in words)
         if vietnamese_count >= 2:  # Require at least 2 Vietnamese words
             return "Vietnamese"
 
         # Spanish indicators
-        spanish_words = ['hola', 'buscar', 'encontrar', 'sobre', 'investigación', 'qué', 'cómo', 'dónde']
+        spanish_words = [
+            "hola",
+            "buscar",
+            "encontrar",
+            "sobre",
+            "investigación",
+            "qué",
+            "cómo",
+            "dónde",
+        ]
         spanish_count = sum(1 for word in spanish_words if word in words)
         if spanish_count >= 2:
             return "Spanish"
 
         # French indicators (excluding common words like "me", "pour")
-        french_words = ['bonjour', 'chercher', 'trouver', 'recherche', 'recherches', 'où']
+        french_words = [
+            "bonjour",
+            "chercher",
+            "trouver",
+            "recherche",
+            "recherches",
+            "où",
+        ]
         french_count = sum(1 for word in french_words if word in words)
         if french_count >= 2:
             return "French"
 
         # German indicators
-        german_words = ['hallo', 'suchen', 'finden', 'über', 'forschung']
+        german_words = ["hallo", "suchen", "finden", "über", "forschung"]
         german_count = sum(1 for word in german_words if word in words)
         if german_count >= 2:
             return "German"
@@ -193,16 +241,16 @@ class QueryClarifier:
         return "English"
 
     async def _analyze_with_llm(
-        self,
-        query: str,
-        complexity: QueryComplexity
+        self, query: str, complexity: QueryComplexity, conversation_history: str = ""
     ) -> ClarificationResult:
         """LLM-based smart analysis."""
         # Detect user's language
         detected_language = self._detect_language(query)
 
-        prompt = f"""You are a friendly research assistant having a natural conversation with a user.
+        history_section = f"\nConversation so far:\n{conversation_history}\n" if conversation_history else ""
 
+        prompt = f"""You are a friendly research assistant having a natural conversation with a user.
+{history_section}
 User's query: "{query}"
 
 The user is speaking in {detected_language}. You MUST respond in {detected_language} in a natural, conversational way.
@@ -247,10 +295,7 @@ Now analyze the query (remember to respond in {detected_language}):"""
             return self._analyze_with_rules(query, complexity)
 
     def _parse_llm_response(
-        self,
-        response: str,
-        query: str,
-        complexity: QueryComplexity
+        self, response: str, query: str, complexity: QueryComplexity
     ) -> ClarificationResult:
         """Parse LLM response into ClarificationResult."""
         understanding = ""
@@ -276,7 +321,7 @@ Now analyze the query (remember to respond in {detected_language}):"""
             questions=questions[:2],
             understanding=understanding or f"Research query: {query}",
             sub_queries=sub_queries,
-            original_query=query
+            original_query=query,
         )
 
     def format_clarification_message(self, result: ClarificationResult) -> str:

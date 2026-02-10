@@ -25,18 +25,20 @@ logger = logging.getLogger(__name__)
 
 class DialogueState(str, Enum):
     """States in the conversation flow."""
-    IDLE = "idle"                    # No active research
-    CLARIFYING = "clarifying"        # Asking clarifying questions (NEW)
-    PLANNING = "planning"            # Generating plan
-    REVIEWING = "reviewing"          # Plan ready, awaiting approval
-    EDITING = "editing"              # User is editing the plan
-    EXECUTING = "executing"          # Pipeline running
-    COMPLETE = "complete"            # Research done, can ask follow-ups
-    ERROR = "error"                  # Something went wrong
+
+    IDLE = "idle"  # No active research
+    CLARIFYING = "clarifying"  # Asking clarifying questions (NEW)
+    PLANNING = "planning"  # Generating plan
+    REVIEWING = "reviewing"  # Plan ready, awaiting approval
+    EDITING = "editing"  # User is editing the plan
+    EXECUTING = "executing"  # Pipeline running
+    COMPLETE = "complete"  # Research done, can ask follow-ups
+    ERROR = "error"  # Something went wrong
 
 
 class MessageRole(str, Enum):
     """Who sent the message."""
+
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
@@ -45,6 +47,7 @@ class MessageRole(str, Enum):
 @dataclass
 class Message:
     """A single message in the conversation."""
+
     role: MessageRole
     content: str
     timestamp: datetime = field(default_factory=datetime.now)
@@ -55,7 +58,7 @@ class Message:
             "role": self.role.value,
             "content": self.content,
             "timestamp": self.timestamp.isoformat(),
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
     @classmethod
@@ -64,7 +67,7 @@ class Message:
             role=MessageRole(data["role"]),
             content=data["content"],
             timestamp=datetime.fromisoformat(data["timestamp"]),
-            metadata=data.get("metadata", {})
+            metadata=data.get("metadata", {}),
         )
 
 
@@ -79,6 +82,7 @@ class ConversationContext:
     - Pending plan (if any)
     - Research session link
     """
+
     conversation_id: str
     user_id: str = "default"  # For memory tracking
     state: DialogueState = DialogueState.IDLE
@@ -98,6 +102,9 @@ class ConversationContext:
     # User-provided URLs extracted from messages
     pending_urls: List[str] = field(default_factory=list)
 
+    # Activity log (persisted)
+    activity_log: List[Dict[str, Any]] = field(default_factory=list)
+
     # Results after execution
     result_summary: Optional[str] = None
 
@@ -110,17 +117,13 @@ class ConversationContext:
 
     def add_message(self, role: MessageRole, content: str, metadata: dict = None):
         """Add a message to history."""
-        message = Message(
-            role=role,
-            content=content,
-            metadata=metadata or {}
-        )
+        message = Message(role=role, content=content, metadata=metadata or {})
         self.messages.append(message)
         self.updated_at = datetime.now()
 
         # Trim old messages
         if len(self.messages) > self.max_messages:
-            self.messages = self.messages[-self.max_messages:]
+            self.messages = self.messages[-self.max_messages :]
 
     def add_user_message(self, content: str):
         """Convenience method for user messages."""
@@ -149,7 +152,9 @@ class ConversationContext:
 
     def transition_to(self, new_state: DialogueState):
         """Transition to a new state."""
-        logger.info(f"Conversation {self.conversation_id}: {self.state.value} → {new_state.value}")
+        logger.info(
+            f"Conversation {self.conversation_id}: {self.state.value} → {new_state.value}"
+        )
         self.state = new_state
         self.updated_at = datetime.now()
 
@@ -177,6 +182,7 @@ class ConversationContext:
             "current_topic": self.current_topic,
             "research_session_id": self.research_session_id,
             "result_summary": self.result_summary,
+            "activity_log": self.activity_log,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
             # Note: pending_plan and current_request not serialized (complex objects)
@@ -192,8 +198,9 @@ class ConversationContext:
             current_topic=data.get("current_topic"),
             research_session_id=data.get("research_session_id"),
             result_summary=data.get("result_summary"),
+            activity_log=data.get("activity_log", []),
             created_at=datetime.fromisoformat(data["created_at"]),
-            updated_at=datetime.fromisoformat(data["updated_at"])
+            updated_at=datetime.fromisoformat(data["updated_at"]),
         )
         return ctx
 
@@ -271,12 +278,14 @@ class ConversationStore:
             data = await self.redis.get(key)
             if data:
                 parsed = json.loads(data)
-                conversations.append({
-                    "conversation_id": conv_id,
-                    "state": parsed.get("state", "unknown"),
-                    "current_topic": parsed.get("current_topic"),
-                    "created_at": parsed.get("created_at"),
-                    "user_id": parsed.get("user_id"),
-                    "message_count": len(parsed.get("messages", [])),
-                })
+                conversations.append(
+                    {
+                        "conversation_id": conv_id,
+                        "state": parsed.get("state", "unknown"),
+                        "current_topic": parsed.get("current_topic"),
+                        "created_at": parsed.get("created_at"),
+                        "user_id": parsed.get("user_id"),
+                        "message_count": len(parsed.get("messages", [])),
+                    }
+                )
         return conversations

@@ -9,12 +9,16 @@ Contains data collection services:
 """
 
 from src.research.ingestion.searcher import ArxivSearcher, HuggingFaceSearcher
-from src.research.ingestion.collector import ArxivCollector, RSSCollector, IngestionFactory
+from src.research.ingestion.collector import (
+    ArxivCollector,
+    RSSCollector,
+    IngestionFactory,
+)
 
 __all__ = [
     "ArxivSearcher",
     "HuggingFaceSearcher",
     "ArxivCollector",
     "RSSCollector",
-    "IngestionFactory"
+    "IngestionFactory",
 ]

@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings
 from typing import Optional
 from functools import lru_cache
 
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Research Assistant API"
     VERSION: str = "0.1.0"
@@ -53,8 +54,10 @@ class Settings(BaseSettings):
         case_sensitive = True
         extra = "ignore"  # Ignore extra fields in .env
 
+
 @lru_cache()
 def get_settings():
     return Settings()
+
 
 settings = get_settings()

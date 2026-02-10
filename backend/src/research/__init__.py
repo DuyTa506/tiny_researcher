@@ -12,8 +12,4 @@ Import submodules directly to avoid circular imports:
 """
 
 # Lazy imports to avoid circular dependencies
-__all__ = [
-    "ingestion",
-    "analysis", 
-    "synthesis"
-]
+__all__ = ["ingestion", "analysis", "synthesis"]

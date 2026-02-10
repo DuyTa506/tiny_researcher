@@ -1,23 +1,24 @@
 import type { Metadata } from 'next';
-import { Inter, Merriweather } from 'next/font/google';
+import { Crimson_Pro, Atkinson_Hyperlegible } from 'next/font/google';
 import Providers from './providers';
 import './globals.css';
 
-const inter = Inter({
-  variable: '--font-inter',
+const crimsonPro = Crimson_Pro({
+  variable: '--font-heading',
   subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
   display: 'swap',
 });
 
-const merriweather = Merriweather({
-  variable: '--font-merriweather',
+const atkinson = Atkinson_Hyperlegible({
+  variable: '--font-body',
   subsets: ['latin'],
-  weight: ['300', '400', '700'],
+  weight: ['400', '700'],
   display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: 'Research Assistant — AI-Powered Paper Discovery',
+  title: 'Tiny Researcher — AI-Powered Paper Discovery',
   description:
     'An intelligent research paper aggregation and analysis system. Collect, screen, extract evidence, and synthesize citation-grounded reports.',
   keywords: [
@@ -37,7 +38,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${merriweather.variable}`}>
+      <body className={`${crimsonPro.variable} ${atkinson.variable}`}>
         <Providers>{children}</Providers>
       </body>
     </html>

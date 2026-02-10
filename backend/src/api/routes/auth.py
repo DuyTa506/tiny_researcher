@@ -9,10 +9,17 @@ from fastapi import APIRouter, HTTPException, Depends, status
 import logging
 
 from src.auth.schemas import (
-    RegisterRequest, LoginRequest, RefreshTokenRequest,
-    PasswordResetRequest, PasswordResetConfirm, ChangePasswordRequest,
-    UpdateProfileRequest, GoogleAuthRequest,
-    TokenResponse, UserResponse, MessageResponse,
+    RegisterRequest,
+    LoginRequest,
+    RefreshTokenRequest,
+    PasswordResetRequest,
+    PasswordResetConfirm,
+    ChangePasswordRequest,
+    UpdateProfileRequest,
+    GoogleAuthRequest,
+    TokenResponse,
+    UserResponse,
+    MessageResponse,
 )
 from src.auth.service import AuthService
 from src.auth.dependencies import get_auth_service, get_current_user
@@ -54,7 +61,10 @@ def _token_response(auth: AuthService, user: User) -> TokenResponse:
 
 # ── Registration ──
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+)
 async def register(
     req: RegisterRequest,
     auth: AuthService = Depends(get_auth_service),
@@ -82,6 +92,7 @@ async def register(
 
 # ── Login ──
 
+
 @router.post("/login", response_model=TokenResponse)
 async def login(
     req: LoginRequest,
@@ -105,6 +116,7 @@ async def login(
 
 
 # ── Refresh ──
+
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(
@@ -131,6 +143,7 @@ async def refresh_token(
 
 # ── Profile ──
 
+
 @router.get("/me", response_model=UserResponse)
 async def get_profile(user: User = Depends(get_current_user)):
     """Get current user profile."""
@@ -150,7 +163,9 @@ async def update_profile(
     if req.username is not None:
         existing = await auth.get_user_by_username(req.username)
         if existing and existing.id != user.id:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Username already taken"
+            )
         updates["username"] = req.username
     if req.preferences is not None:
         updates["preferences"] = req.preferences
@@ -169,7 +184,9 @@ async def change_password(
     auth: AuthService = Depends(get_auth_service),
 ):
     """Change current user's password."""
-    success = await auth.change_password(user.id, req.current_password, req.new_password)
+    success = await auth.change_password(
+        user.id, req.current_password, req.new_password
+    )
     if not success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -179,6 +196,7 @@ async def change_password(
 
 
 # ── Email Verification ──
+
 
 @router.post("/verify-email", response_model=MessageResponse)
 async def verify_email(
@@ -212,6 +230,7 @@ async def resend_verification(
 
 # ── Password Reset ──
 
+
 @router.post("/password-reset", response_model=MessageResponse)
 async def request_password_reset(
     req: PasswordResetRequest,
@@ -241,6 +260,7 @@ async def confirm_password_reset(
 
 
 # ── Google OAuth ──
+
 
 @router.post("/google", response_model=TokenResponse)
 async def google_auth(
@@ -275,12 +295,15 @@ async def google_auth(
         user = await auth.get_user_by_email(google_email)
         if user:
             # Link Google to existing account
-            await auth.update_profile(user.id, {
-                "oauth_provider": "google",
-                "oauth_id": google_id,
-                "email_verified": True,
-                "avatar_url": google_picture or user.avatar_url,
-            })
+            await auth.update_profile(
+                user.id,
+                {
+                    "oauth_provider": "google",
+                    "oauth_id": google_id,
+                    "email_verified": True,
+                    "avatar_url": google_picture or user.avatar_url,
+                },
+            )
         else:
             # Create new user from Google
             username = google_email.split("@")[0]

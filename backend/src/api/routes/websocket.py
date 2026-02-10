@@ -10,7 +10,6 @@ Provides:
 import asyncio
 import json
 import logging
-import os
 from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
@@ -19,6 +18,7 @@ from src.conversation.dialogue import DialogueManager, DialogueResponse
 from src.conversation.context import DialogueState
 from src.research.pipeline import ResearchPipeline
 from src.adapters.llm import LLMFactory
+from src.core.config import settings
 from src.memory import MemoryManager
 
 router = APIRouter()
@@ -67,8 +67,8 @@ async def get_dialogue_manager() -> DialogueManager:
 
     if _dialogue_manager is None:
         try:
-            gemini_key = os.getenv("GEMINI_API_KEY")
-            openai_key = os.getenv("OPENAI_API_KEY")
+            gemini_key = settings.GEMINI_API_KEY
+            openai_key = settings.OPENAI_API_KEY
 
             if gemini_key:
                 llm = LLMFactory.create_client(provider="gemini", api_key=gemini_key)
@@ -83,16 +83,14 @@ async def get_dialogue_manager() -> DialogueManager:
         pipeline = ResearchPipeline(llm, use_adaptive_planner=True)
         memory = MemoryManager()
 
-        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        redis_url = settings.REDIS_URL
         try:
             await memory.connect(redis_url)
         except Exception as e:
             logger.warning(f"Redis not available: {e}")
 
         _dialogue_manager = DialogueManager(
-            llm_client=llm,
-            pipeline=pipeline,
-            memory=memory
+            llm_client=llm, pipeline=pipeline, memory=memory
         )
 
         try:
@@ -104,10 +102,7 @@ async def get_dialogue_manager() -> DialogueManager:
 
 
 @router.websocket("/{conversation_id}")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    conversation_id: str
-):
+async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
     """
     WebSocket endpoint for real-time conversation.
 
@@ -133,13 +128,12 @@ async def websocket_endpoint(
         conversation_id = context.conversation_id
 
     # Send initial state
-    await websocket.send_json({
-        "type": "connected",
-        "data": {
-            "conversation_id": conversation_id,
-            "state": context.state.value
+    await websocket.send_json(
+        {
+            "type": "connected",
+            "data": {"conversation_id": conversation_id, "state": context.state.value},
         }
-    })
+    )
 
     try:
         while True:
@@ -150,15 +144,19 @@ async def websocket_endpoint(
 
             if msg_type == "message" and content:
                 # Set up progress callback
-                async def progress_callback(phase: str, message: str, progress_data: dict):
-                    await websocket.send_json({
-                        "type": "progress",
-                        "data": {
-                            "phase": phase,
-                            "message": message,
-                            **progress_data
+                async def progress_callback(
+                    phase: str, message: str, progress_data: dict
+                ):
+                    await websocket.send_json(
+                        {
+                            "type": "progress",
+                            "data": {
+                                "phase": phase,
+                                "message": message,
+                                **progress_data,
+                            },
                         }
-                    })
+                    )
 
                 dialogue.set_progress_callback(progress_callback)
 
@@ -174,7 +172,7 @@ async def websocket_endpoint(
                     response_data = {
                         "state": response.state.value,
                         "message": response.message,
-                        "needs_input": response.needs_input
+                        "needs_input": response.needs_input,
                     }
 
                     if response.plan:
@@ -184,7 +182,7 @@ async def websocket_endpoint(
                             "steps": [
                                 {"id": s.id, "title": s.title, "queries": s.queries[:5]}
                                 for s in response.plan.plan.steps
-                            ]
+                            ],
                         }
 
                     if response.result:
@@ -193,13 +191,12 @@ async def websocket_endpoint(
                             "topic": response.result.topic,
                             "unique_papers": response.result.unique_papers,
                             "relevant_papers": response.result.relevant_papers,
-                            "high_relevance_papers": response.result.high_relevance_papers
+                            "high_relevance_papers": response.result.high_relevance_papers,
                         }
 
-                    await websocket.send_json({
-                        "type": "response",
-                        "data": response_data
-                    })
+                    await websocket.send_json(
+                        {"type": "response", "data": response_data}
+                    )
 
             elif msg_type == "ping":
                 await websocket.send_json({"type": "pong"})
@@ -209,19 +206,14 @@ async def websocket_endpoint(
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         try:
-            await websocket.send_json({
-                "type": "error",
-                "data": {"message": str(e)}
-            })
+            await websocket.send_json({"type": "error", "data": {"message": str(e)}})
         except:
             pass
         manager.disconnect(conversation_id)
 
 
 async def handle_streaming_command(
-    websocket: WebSocket,
-    dialogue: DialogueManager,
-    command: str
+    websocket: WebSocket, dialogue: DialogueManager, command: str
 ):
     """Handle /ask and /explain commands with LLM streaming."""
     if command.startswith("/ask "):
@@ -230,32 +222,28 @@ async def handle_streaming_command(
     elif command.startswith("/explain "):
         topic = command[9:].strip()
         question = f"Explain '{topic}' in the context of academic research. Include what it is, why it matters, and key concepts."
-        system_instruction = "You are a helpful research assistant explaining academic concepts."
+        system_instruction = (
+            "You are a helpful research assistant explaining academic concepts."
+        )
     else:
         return
 
     # Stream the LLM response
-    await websocket.send_json({
-        "type": "stream_start",
-        "data": {}
-    })
+    await websocket.send_json({"type": "stream_start", "data": {}})
 
     full_response = ""
     try:
         async for chunk in dialogue.llm.generate_stream(question, system_instruction):
             full_response += chunk
-            await websocket.send_json({
-                "type": "stream_chunk",
-                "data": {"chunk": chunk}
-            })
+            await websocket.send_json(
+                {"type": "stream_chunk", "data": {"chunk": chunk}}
+            )
     except Exception as e:
         logger.error(f"Streaming error: {e}")
-        await websocket.send_json({
-            "type": "error",
-            "data": {"message": f"Streaming error: {e}"}
-        })
+        await websocket.send_json(
+            {"type": "error", "data": {"message": f"Streaming error: {e}"}}
+        )
 
-    await websocket.send_json({
-        "type": "stream_end",
-        "data": {"full_response": full_response}
-    })
+    await websocket.send_json(
+        {"type": "stream_end", "data": {"full_response": full_response}}
+    )

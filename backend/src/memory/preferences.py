@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class UserPreferences:
     """User preferences learned over time."""
+
     user_id: str
 
     # Language preferences
@@ -68,7 +69,7 @@ class UserPreferences:
         topic: str,
         language_used: str,
         sources_used: List[str],
-        papers_requested: Optional[int] = None
+        papers_requested: Optional[int] = None,
     ):
         """Learn from user behavior."""
         self.interaction_count += 1
@@ -148,7 +149,7 @@ class PreferencesStore:
             await self.redis.setex(
                 self._key(prefs.user_id),
                 self.PREFERENCES_TTL,
-                json.dumps(prefs.to_dict())
+                json.dumps(prefs.to_dict()),
             )
             logger.debug(f"Saved preferences for user {prefs.user_id}")
 
@@ -158,7 +159,7 @@ class PreferencesStore:
         topic: str,
         language: str = "en",
         sources: List[str] = None,
-        papers_count: int = None
+        papers_count: int = None,
     ):
         """Update preferences based on user interaction."""
         prefs = await self.get(user_id)
@@ -166,20 +167,22 @@ class PreferencesStore:
             topic=topic,
             language_used=language,
             sources_used=sources or [],
-            papers_requested=papers_count
+            papers_requested=papers_count,
         )
         await self.save(prefs)
 
     async def detect_language(self, text: str) -> str:
         """Simple language detection based on characters."""
         # Vietnamese detection
-        vietnamese_chars = set("àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ")
+        vietnamese_chars = set(
+            "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ"
+        )
         if any(c in vietnamese_chars for c in text.lower()):
             return "vi"
 
         # Chinese detection
         for char in text:
-            if '\u4e00' <= char <= '\u9fff':
+            if "\u4e00" <= char <= "\u9fff":
                 return "zh"
 
         return "en"

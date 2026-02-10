@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
 from datetime import datetime
 
-
 # ── Requests ──
+
 
 class RegisterRequest(BaseModel):
     email: str = Field(..., description="User email address")
@@ -50,6 +50,7 @@ class GoogleAuthRequest(BaseModel):
 
 
 # ── Responses ──
+
 
 class TokenResponse(BaseModel):
     access_token: str

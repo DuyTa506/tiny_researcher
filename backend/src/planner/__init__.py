@@ -20,6 +20,5 @@ __all__ = [
     "PlanExecutor",
     "StepStatus",
     "StepResult",
-    "ExecutionProgress"
+    "ExecutionProgress",
 ]
-

@@ -39,7 +39,7 @@ tiny_researcher/
 │   │   ├── adapters/            # External service adapters (Arxiv, etc.)
 │   │   ├── api/                 # FastAPI routes and controllers
 │   │   ├── cli/                 # Command-line interface tools
-│   │   ├── conversation/        # Chat and history management
+│   │   ├── conversation/        # Chat, history, and short-term memory
 │   │   ├── core/                # Core configuration and types
 │   │   ├── memory/              # Vector storage and retrieval logic
 │   │   ├── planner/             # Research planning modules
@@ -55,18 +55,20 @@ tiny_researcher/
 ├── frontend/                    # Next.js Application
 │   ├── src/
 │   │   ├── app/                 # Next.js App Router pages
-│   │   │   ├── (routes)/
 │   │   │   ├── papers/          # Paper listing and details
 │   │   │   ├── reports/         # Report generation views
-│   │   │   └── research/        # Active research session views
+│   │   │   ├── research/        # Active research session views
+│   │   │   └── sessions/        # Session history listing
 │   │   ├── components/          # React components
-│   │   │   ├── chat/            # Chat interface components
-│   │   │   ├── layout/          # Layout wrappers
-│   │   │   └── ui/              # Reusable UI elements
-│   │   ├── hooks/               # Custom React hooks
-│   │   ├── lib/                 # Utilities and constants
-│   │   └── services/            # API client services
-│   ├── public/                  # Static assets
+│   │   │   ├── chat/            # Chat interface components (streaming, cards)
+│   │   │   ├── layout/          # Layout wrappers (Header, Sidebar, AppShell)
+│   │   │   └── ui/              # Reusable UI elements (Button, Card, LanguageSwitcher)
+│   │   ├── hooks/               # Custom React hooks (useResearchChat SSE hook)
+│   │   ├── lib/                 # Utilities, constants, types, i18n config
+│   │   ├── services/            # API client services (Axios)
+│   │   └── styles/              # Design tokens (CSS variables)
+│   ├── public/
+│   │   └── locales/             # i18n translations (EN/VI)
 │   ├── next.config.ts           # Next.js configuration
 │   └── package.json             # Node dependencies
 ├── .agents/                     # Agentic workflows and skills

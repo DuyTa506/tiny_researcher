@@ -14,7 +14,11 @@ from datetime import datetime
 from typing import List, Tuple, Optional, Any
 
 from src.core.models import (
-    Paper, PaperStatus, EvidenceSpan, StudyCard, Locator,
+    Paper,
+    PaperStatus,
+    EvidenceSpan,
+    StudyCard,
+    Locator,
 )
 from src.core.prompts import PromptManager
 from src.adapters.llm import LLMClientInterface

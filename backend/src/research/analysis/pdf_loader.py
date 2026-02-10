@@ -11,7 +11,11 @@ import logging
 from typing import List, Optional
 from urllib.parse import urlparse
 from src.core.models import Paper, PaperStatus, Locator
-from src.utils.pdf_parser import fetch_pdf_content, fetch_pdf_with_pages, find_snippet_location
+from src.utils.pdf_parser import (
+    fetch_pdf_content,
+    fetch_pdf_with_pages,
+    find_snippet_location,
+)
 from src.tools.cache_manager import ToolCacheManager
 
 logger = logging.getLogger(__name__)
@@ -69,7 +73,7 @@ class PDFLoaderService:
     def __init__(
         self,
         cache_manager: Optional[ToolCacheManager] = None,
-        relevance_threshold: float = 8.0
+        relevance_threshold: float = 8.0,
     ):
         """
         Initialize PDF loader.
@@ -96,8 +100,13 @@ class PDFLoaderService:
             return True
 
         # Skip if below threshold
-        if not paper.relevance_score or paper.relevance_score < self.relevance_threshold:
-            logger.debug(f"Skipping PDF for paper {paper.title[:50]} (score: {paper.relevance_score})")
+        if (
+            not paper.relevance_score
+            or paper.relevance_score < self.relevance_threshold
+        ):
+            logger.debug(
+                f"Skipping PDF for paper {paper.title[:50]} (score: {paper.relevance_score})"
+            )
             return False
 
         # Skip if no PDF URL
@@ -107,7 +116,9 @@ class PDFLoaderService:
 
         # Skip paywalled publisher domains
         if self._is_blocked_domain(paper.pdf_url):
-            logger.info(f"Skipping paywalled PDF for {paper.title[:50]} ({paper.pdf_url[:60]})")
+            logger.info(
+                f"Skipping paywalled PDF for {paper.title[:50]} ({paper.pdf_url[:60]})"
+            )
             return False
 
         # Check cache first
@@ -120,7 +131,9 @@ class PDFLoaderService:
 
         # Download PDF
         try:
-            logger.info(f"Downloading PDF for {paper.title[:50]} (score: {paper.relevance_score})")
+            logger.info(
+                f"Downloading PDF for {paper.title[:50]} (score: {paper.relevance_score})"
+            )
             full_text = await fetch_pdf_content(paper.pdf_url)
 
             if full_text:
@@ -133,7 +146,9 @@ class PDFLoaderService:
                 logger.info(f"Successfully loaded {len(full_text)} chars of full text")
                 return True
             else:
-                logger.warning(f"PDF download returned empty content for {paper.pdf_url}")
+                logger.warning(
+                    f"PDF download returned empty content for {paper.pdf_url}"
+                )
                 return False
 
         except Exception as e:
@@ -232,7 +247,9 @@ class PDFLoaderService:
                 paper.status = PaperStatus.FULLTEXT
 
                 if self.cache_manager:
-                    await self._cache_pages(paper.pdf_url, full_text, page_infos, pdf_hash)
+                    await self._cache_pages(
+                        paper.pdf_url, full_text, page_infos, pdf_hash
+                    )
 
                 return True
             return False
@@ -285,17 +302,21 @@ class PDFLoaderService:
             logger.error(f"Error reading PDF pages cache: {e}")
             return None
 
-    async def _cache_pages(self, pdf_url: str, full_text: str, page_infos: list, pdf_hash: str):
+    async def _cache_pages(
+        self, pdf_url: str, full_text: str, page_infos: list, pdf_hash: str
+    ):
         """Cache PDF with page info."""
         if not self.cache_manager or not self.cache_manager.redis:
             return
         try:
             key = f"pdf_pages_cache:{pdf_url}"
-            data = json.dumps({
-                "full_text": full_text,
-                "page_infos": page_infos,
-                "pdf_hash": pdf_hash,
-            })
+            data = json.dumps(
+                {
+                    "full_text": full_text,
+                    "page_infos": page_infos,
+                    "pdf_hash": pdf_hash,
+                }
+            )
             await self.cache_manager.redis.setex(key, self.PDF_CACHE_TTL, data)
         except Exception as e:
             logger.error(f"Error caching PDF pages: {e}")

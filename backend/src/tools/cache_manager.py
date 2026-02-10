@@ -43,10 +43,10 @@ class ToolCacheManager:
 
     # TTL configuration per tool (in seconds)
     TTL_CONFIG: Dict[str, int] = {
-        "search": 3600,                 # 1 hour (unified search)
-        "hf_trending": 1800,            # 30 minutes
-        "collect_url": 86400,           # 24 hours
-        "default": 3600,                # 1 hour
+        "search": 3600,  # 1 hour (unified search)
+        "hf_trending": 1800,  # 30 minutes
+        "collect_url": 86400,  # 24 hours
+        "default": 3600,  # 1 hour
     }
 
     def __init__(self, redis_url: str = None):
@@ -62,9 +62,7 @@ class ToolCacheManager:
         """Connect to Redis."""
         try:
             self.redis = await aioredis.from_url(
-                self.redis_url,
-                encoding="utf-8",
-                decode_responses=True
+                self.redis_url, encoding="utf-8", decode_responses=True
             )
             await self.redis.ping()
             logger.info("Connected to Redis for tool cache")

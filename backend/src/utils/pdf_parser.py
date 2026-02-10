@@ -21,18 +21,23 @@ async def fetch_pdf_content(pdf_url: str) -> str:
                 text = ""
                 # Extract text from first 10 pages for MVP speed
                 for i, page in enumerate(reader.pages):
-                    if i > 10: break
+                    if i > 10:
+                        break
                     text += page.extract_text() + "\n"
                 return text
             else:
-                logger.warning("pdf_download_failed", url=pdf_url, status=response.status_code)
+                logger.warning(
+                    "pdf_download_failed", url=pdf_url, status=response.status_code
+                )
                 return ""
     except Exception as e:
-            logger.warning("pdf_parse_failed", url=pdf_url, error=str(e))
-            return ""
+        logger.warning("pdf_parse_failed", url=pdf_url, error=str(e))
+        return ""
 
 
-async def fetch_pdf_with_pages(pdf_url: str, max_pages: int = 15) -> Tuple[str, List[dict], str]:
+async def fetch_pdf_with_pages(
+    pdf_url: str, max_pages: int = 15
+) -> Tuple[str, List[dict], str]:
     """
     Downloads PDF and extracts text with page-level metadata.
 
@@ -44,7 +49,9 @@ async def fetch_pdf_with_pages(pdf_url: str, max_pages: int = 15) -> Tuple[str, 
         async with httpx.AsyncClient() as client:
             response = await client.get(pdf_url, follow_redirects=True, timeout=30.0)
             if response.status_code != 200:
-                logger.warning("pdf_download_failed", url=pdf_url, status=response.status_code)
+                logger.warning(
+                    "pdf_download_failed", url=pdf_url, status=response.status_code
+                )
                 return "", [], ""
 
             content_bytes = response.content
@@ -63,11 +70,13 @@ async def fetch_pdf_with_pages(pdf_url: str, max_pages: int = 15) -> Tuple[str, 
                 char_start = len(full_text)
                 full_text += page_text + "\n"
                 char_end = len(full_text)
-                page_infos.append({
-                    "text": page_text,
-                    "char_start": char_start,
-                    "char_end": char_end,
-                })
+                page_infos.append(
+                    {
+                        "text": page_text,
+                        "char_start": char_start,
+                        "char_end": char_end,
+                    }
+                )
 
             return full_text, page_infos, pdf_hash
 
@@ -76,7 +85,9 @@ async def fetch_pdf_with_pages(pdf_url: str, max_pages: int = 15) -> Tuple[str, 
         return "", [], ""
 
 
-def find_snippet_location(full_text: str, snippet: str, page_infos: List[dict]) -> Optional[dict]:
+def find_snippet_location(
+    full_text: str, snippet: str, page_infos: List[dict]
+) -> Optional[dict]:
     """
     Find where a snippet appears in the full text and resolve to page number.
 

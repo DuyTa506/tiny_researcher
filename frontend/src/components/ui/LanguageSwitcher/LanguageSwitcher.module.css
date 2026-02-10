@@ -1,0 +1,41 @@
+/* LanguageSwitcher */
+
+.switcher {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: var(--color-border-light);
+    border-radius: var(--radius-md);
+    padding: 2px;
+    border: 1px solid var(--color-border);
+}
+
+.icon {
+    color: var(--color-text-light);
+    margin: 0 4px 0 6px;
+    flex-shrink: 0;
+}
+
+.btn {
+    all: unset;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    border-radius: calc(var(--radius-md) - 2px);
+    color: var(--color-text-light);
+    transition: all var(--duration-fast) var(--ease-out);
+    user-select: none;
+}
+
+.btn:hover {
+    color: var(--color-text);
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.btn.active {
+    background: var(--color-primary);
+    color: white;
+    box-shadow: 0 1px 4px rgba(99, 102, 241, 0.3);
+}

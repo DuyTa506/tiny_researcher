@@ -26,6 +26,7 @@ class MemoryContext:
 
     Injected into planning/clarification for better responses.
     """
+
     # From episodic memory
     similar_sessions: List[str] = None  # Summaries of similar past sessions
     recommended_sources: List[str] = None
@@ -52,13 +53,19 @@ class MemoryContext:
                 lines.append(f"  - {session}")
 
         if self.keywords_effective:
-            lines.append(f"**Keywords that worked before:** {', '.join(self.keywords_effective[:5])}")
+            lines.append(
+                f"**Keywords that worked before:** {', '.join(self.keywords_effective[:5])}"
+            )
 
         if self.keywords_to_avoid:
-            lines.append(f"**Keywords to avoid:** {', '.join(self.keywords_to_avoid[:3])}")
+            lines.append(
+                f"**Keywords to avoid:** {', '.join(self.keywords_to_avoid[:3])}"
+            )
 
         if self.recommended_sources:
-            lines.append(f"**Recommended sources:** {', '.join(self.recommended_sources)}")
+            lines.append(
+                f"**Recommended sources:** {', '.join(self.recommended_sources)}"
+            )
 
         return "\n".join(lines) if lines else ""
 
@@ -99,11 +106,7 @@ class MemoryManager:
         await self.preferences.close()
         self._connected = False
 
-    async def get_context(
-        self,
-        user_id: str,
-        topic: str
-    ) -> MemoryContext:
+    async def get_context(self, user_id: str, topic: str) -> MemoryContext:
         """
         Get combined context from all memory types for a topic.
 
@@ -132,8 +135,12 @@ class MemoryManager:
         if episodic_context:
             context.has_relevant_history = True
             context.similar_sessions = episodic_context.get("similar_past_sessions", [])
-            context.recommended_sources = episodic_context.get("recommended_sources", [])
-            context.keywords_effective = episodic_context.get("keywords_that_worked", [])
+            context.recommended_sources = episodic_context.get(
+                "recommended_sources", []
+            )
+            context.keywords_effective = episodic_context.get(
+                "keywords_that_worked", []
+            )
             context.keywords_to_avoid = episodic_context.get("keywords_to_avoid", [])
 
         return context
@@ -152,7 +159,7 @@ class MemoryManager:
         keywords_effective: List[str] = None,
         keywords_ineffective: List[str] = None,
         outcome: SessionOutcome = SessionOutcome.SUCCESS,
-        duration_seconds: float = 0.0
+        duration_seconds: float = 0.0,
     ):
         """
         Record a completed research session to episodic memory.
@@ -170,7 +177,7 @@ class MemoryManager:
             keywords_effective=keywords_effective or [],
             keywords_ineffective=keywords_ineffective or [],
             outcome=outcome,
-            duration_seconds=duration_seconds
+            duration_seconds=duration_seconds,
         )
 
         await self.episodic.save_episode(episode)
@@ -182,7 +189,7 @@ class MemoryManager:
         topic: str,
         language: str = "en",
         sources: List[str] = None,
-        papers_count: int = None
+        papers_count: int = None,
     ):
         """
         Update preferences based on user interaction.
@@ -192,18 +199,14 @@ class MemoryManager:
             topic=topic,
             language=language,
             sources=sources,
-            papers_count=papers_count
+            papers_count=papers_count,
         )
 
     async def get_preferences(self, user_id: str) -> UserPreferences:
         """Get user preferences."""
         return await self.preferences.get(user_id)
 
-    async def update_preferences(
-        self,
-        user_id: str,
-        **updates
-    ):
+    async def update_preferences(self, user_id: str, **updates):
         """Update specific preference fields."""
         prefs = await self.preferences.get(user_id)
 
@@ -213,20 +216,12 @@ class MemoryManager:
 
         await self.preferences.save(prefs)
 
-    async def get_user_history_summary(
-        self,
-        user_id: str,
-        limit: int = 5
-    ) -> List[str]:
+    async def get_user_history_summary(self, user_id: str, limit: int = 5) -> List[str]:
         """Get summary of user's recent research history."""
         episodes = await self.episodic.get_user_episodes(user_id, limit=limit)
         return [ep.summary() for ep in episodes]
 
-    async def should_skip_clarification(
-        self,
-        user_id: str,
-        topic: str
-    ) -> bool:
+    async def should_skip_clarification(self, user_id: str, topic: str) -> bool:
         """
         Determine if we should skip clarification for this user/topic.
 

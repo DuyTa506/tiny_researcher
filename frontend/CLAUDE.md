@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Tiny Researcher Frontend** is a Next.js application that provides the interactive research workspace UI for the Tiny Researcher system.  
+**Tiny Researcher Frontend** is a Next.js application that provides the interactive research workspace UI for the Tiny Researcher system.
 It connects to the Python FastAPI backend to drive the research pipeline (clarify → plan → collect → screen → extract → synthesize → audit).
 
-**Current Status:** Modern App Router Next.js app with React Query, Axios-based API layer, and dedicated research views for conversations, papers, and reports.
+**Current Status:** Modern App Router Next.js app with React Query, Axios-based API layer, SSE streaming, i18n (EN/VI), and dedicated research views for conversations, papers, and reports.
 
 ## Tech Stack
 
@@ -17,251 +17,152 @@ It connects to the Python FastAPI backend to drive the research pipeline (clarif
 | **Language** | TypeScript |
 | **UI Library** | React 19.x |
 | **State Management** | @tanstack/react-query (server state) |
-| **Styling** | CSS Modules |
+| **Styling** | CSS Modules + design tokens (`src/styles/tokens.css`) |
 | **Icons** | lucide-react |
 | **HTTP Client** | Axios |
 | **Markdown Rendering** | react-markdown, remark-gfm |
 | **Charts** | Recharts |
+| **i18n** | react-i18next (EN/VI) |
 | **Linting** | ESLint |
 
 ## Project Structure
 
-The frontend is a standard App Router Next.js app with a small service + hooks layer for API access.
-
 ```text
 frontend/
-├── .agents/                 # Agent workflows / skills for this project
-├── public/                  # Static assets
+├── public/
+│   └── locales/             # i18n translation files (en, vi)
 └── src/
     ├── app/                 # Next.js App Router entry points
     │   ├── layout.tsx       # Root layout + providers
     │   ├── page.tsx         # Dashboard / entry screen
+    │   ├── login/           # Login page
     │   ├── papers/          # Paper list & detail routes
+    │   ├── profile/         # User profile
     │   ├── reports/         # Report listing & viewing
-    │   └── research/        # Active research session views
+    │   ├── research/        # Active research session views
+    │   ├── sessions/        # Session history listing
+    │   └── providers.tsx    # React Query client, global context
     ├── components/
-    │   ├── chat/            # Chat interface (messages, input, stream)
-    │   ├── layout/          # Header, sidebar, shell components
-    │   └── ui/              # Reusable UI primitives (buttons, cards, etc.)
-    ├── hooks/               # React Query hooks, streaming hooks
-    ├── lib/                 # Utilities (constants, helpers)
-    ├── services/            # Axios instances and API clients
-    └── styles/              # CSS modules and global styles
+    │   ├── chat/            # Chat interface (messages, streaming, activity log)
+    │   │   ├── ActivityLog/
+    │   │   ├── ClaimsCard/
+    │   │   ├── EvidenceCard/
+    │   │   ├── PapersCollectedCard/
+    │   │   ├── PlanCard/
+    │   │   ├── StreamingText/
+    │   │   ├── TaxonomyPreview/
+    │   │   └── ThinkingBubble/
+    │   ├── layout/          # Header, sidebar, app shell
+    │   │   ├── AppShell/
+    │   │   ├── Header/      # Includes LanguageSwitcher
+    │   │   └── Sidebar/
+    │   └── ui/              # Reusable UI primitives
+    │       ├── Badge/
+    │       ├── Button/
+    │       ├── Card/
+    │       ├── Input/
+    │       ├── LanguageSwitcher/  # EN/VI language toggle
+    │       ├── Modal/
+    │       ├── Skeleton/
+    │       └── Toast/
+    ├── hooks/
+    │   └── useResearchChat.ts  # Core SSE streaming hook (all real-time state)
+    ├── lib/
+    │   ├── constants.ts     # API base URL, app constants
+    │   ├── i18n.ts          # i18n configuration (react-i18next)
+    │   ├── types.ts         # TypeScript interfaces matching backend models
+    │   └── utils.ts         # Utility functions (generateId, etc.)
+    ├── services/
+    │   └── conversations.ts # Axios-based API client for conversations
+    └── styles/
+        └── tokens.css       # Design tokens (colors, typography, spacing, glassmorphism)
 ```
 
-### Architecture Map
+## Key Architecture Details
 
-| Layer | Location | Description |
-|-------|----------|-------------|
-| **UI Components** | `src/components/{ui,chat,layout}` | Presentational and feature components. |
-| **Routing / Pages** | `src/app` | App Router routes for dashboard, research, papers, reports. |
-| **Global Providers** | `src/app/layout.tsx`, `src/app/providers.tsx` | React Query client, theme, global context. |
-| **Data Fetching** | `src/services`, `src/hooks` | Axios-based API clients + React Query hooks. |
-| **Config / Utils** | `src/lib` | Constants (e.g. API base URL), helpers. |
-| **Styles** | `src/styles` | App-wide styles and CSS modules. |
+### SSE Streaming (`useResearchChat.ts`)
+
+The core hook manages all real-time communication with the backend:
+
+- **Single SSE connection per conversation** — tracked via `connectedConvIdRef` to prevent duplicate connections
+- **Handles all event types**: `progress`, `state_change`, `message`, `thinking`, `token_stream`, `plan`, `screening_summary`, `papers_collected`, `evidence`, `taxonomy`, `claims`, `gap_mining`, `approval_required`, `complete`, `done`, `result`, `error`
+- **Token streaming**: Assembles `token_stream` events into complete messages with `isStreaming` flag
+- **State change dedup**: Skips no-op transitions where `from === to`
+- **Session restoration**: Loads existing session data (messages, activity log, pipeline status) on mount
+
+### Type System (`lib/types.ts`)
+
+All TypeScript interfaces mirror the backend Pydantic models:
+- `SSEEvent` — discriminated union of all streaming event types
+- `ChatEvent` — unified chat timeline entry (message, thinking, plan, evidence, etc.)
+- `PipelineStatus` — current phase/progress
+- `Paper`, `Claim`, `EvidenceSpan`, `TaxonomyMatrix` — research data models
+
+### Internationalization
+
+- Translation files: `public/locales/{en,vi}/common.json`
+- Configuration: `src/lib/i18n.ts` using `react-i18next`
+- Language switcher in the Header component
 
 ## Backend Integration
 
-- The frontend talks to the backend FastAPI service via a base URL configured with `NEXT_PUBLIC_API_URL`.  
-- Default development target (can be overridden in `.env.local`):
+- Base URL: `NEXT_PUBLIC_API_URL` env var (default: `http://localhost:8000/api/v1`)
+- All HTTP calls go through the Axios instance in `src/services/conversations.ts`
+- SSE stream URL: `{API_URL}/conversations/{id}/stream`
 
-```bash
-NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-```
-
-**Key expectations for agents:**
-
-1. Prefer going through the existing Axios instance (in `src/services`) instead of creating ad-hoc `fetch` calls.
-2. Expose new backend endpoints through a small service function (`src/services/*.ts`), then wrap it in a React Query hook in `src/hooks`.
-3. Keep components mostly presentational; move side effects and data fetching into hooks.
+**Key endpoints used:**
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/conversations` | POST | Create new conversation |
+| `/conversations` | GET | List all conversations |
+| `/conversations/{id}` | GET | Get conversation state + messages |
+| `/conversations/{id}/messages` | POST | Send message (returns 202, streams via SSE) |
+| `/conversations/{id}/stream` | GET | SSE event stream |
+| `/conversations/{id}` | DELETE | Delete conversation |
 
 ## Development Commands
 
-The frontend uses a standard Node.js toolchain. Use your preferred package manager (`pnpm`, `npm`, or `yarn`); adapt commands as needed.
-
 ```bash
-# Install dependencies (example with pnpm)
-pnpm install
-
-# or with npm
+# Install dependencies
 npm install
 
 # Run dev server
-pnpm dev          # or: npm run dev
+npm run dev
 
 # Build for production
-pnpm build        # or: npm run build
+npm run build
 
 # Start production build
-pnpm start        # or: npm run start
+npm start
 
 # Lint
-pnpm lint         # or: npm run lint
+npm run lint
 ```
 
-## Entry Points (Frontend)
-
-### Starting the app (development)
-
-1. Ensure the backend API is running and reachable at `NEXT_PUBLIC_API_URL`.  
-2. From `frontend/`, run:
-
-```bash
-pnpm dev   # or: npm run dev
-```
-
-3. Open `http://localhost:3000` in the browser.
-
-### Research Flow in the UI
-
-Typical usage pattern in the app:
-
-1. User opens the dashboard or research page (`/research`).  
-2. User enters a research topic and optional configuration (language, limits).  
-3. Frontend creates or resumes a conversation / research session via the backend API.  
-4. React Query hooks subscribe to research progress (polling or SSE / WebSocket if implemented).  
-5. UI updates chat messages, phase progress, and final reports as data comes back from the backend.
-
-Agents should **reuse existing hooks and services** when extending this flow (e.g., new views on evidence, taxonomy, or audit results).
-
-## Development Strategy (Frontend)
+## Development Strategy
 
 ### Code Organization Principles
 
-1. **Component-first UI** – Keep UI components small, focused, and reusable.
-2. **Hooks for logic** – Place data fetching and non-trivial state logic into hooks in `src/hooks`.
-3. **Single source of API truth** – Centralize all HTTP calls in `src/services` through a shared Axios instance.
-4. **Type-safe** – Use TypeScript types/interfaces for API responses and component props.
-5. **Progressive enhancement** – Start from a simple version and layer in more interactivity or sophistication only when needed.
+1. **Component-first UI** — Keep UI components small, focused, and reusable.
+2. **Hooks for logic** — Place data fetching and non-trivial state logic into hooks in `src/hooks`.
+3. **Single source of API truth** — Centralize all HTTP calls in `src/services` through a shared Axios instance.
+4. **Type-safe** — Use TypeScript types/interfaces for API responses and component props.
+5. **CSS Modules** — Component-scoped styles. Global CSS only for layout/theming via `tokens.css`.
 
 ### Common Patterns
 
-**React Query data fetching:**
+**Extending SSE events:**
+1. Add the event type to `SSEEvent` union in `lib/types.ts`
+2. Add a handler `case` in `useResearchChat.ts` `connectSSE` switch
+3. Expose new state via the hook's return object
 
-```ts
-// Pseudocode / pattern – check existing hooks for exact details
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { getSomething, createSomething } from "@/services/api";
+**Adding new API calls:**
+1. Add the service function in `src/services/conversations.ts`
+2. Create a React Query hook in `src/hooks/` if needed
+3. Use the hook in components — no raw Axios in components
 
-export function useSomething(id: string) {
-  return useQuery({
-    queryKey: ["something", id],
-    queryFn: () => getSomething(id),
-  });
-}
-```
+## Known Issues & Notes
 
-**Separation of concerns:**
-
-- Components under `src/components/ui` should have **no direct API calls**.  
-- `src/components/chat` / `src/app/research` may use hooks that wrap API calls, but should not contain raw Axios logic.
-
-### Styling Guidelines
-
-- Prefer **CSS Modules** for component-scoped styles.  
-- Keep global CSS to layout / theming only.  
-- When adding new UI components, mirror the structure and naming from existing `ui` components.
-
-## Current Limitations & Notes
-
-1. The frontend assumes the backend API contract described in `backend/docs` and `backend/CLAUDE.md`. If you change backend routes or payloads, update `src/services` and related types here.
-2. Authentication is not yet implemented; avoid adding auth flows unless the backend is ready.
-3. Streaming (SSE / WebSocket) integration may be partial; reuse / extend any existing streaming hooks instead of reimplementing from scratch.
-
-## Quick Reference
-
-| Task | Command (example with pnpm) |
-|------|-----------------------------|
-| Install deps | `pnpm install` |
-| Run dev server | `pnpm dev` |
-| Build | `pnpm build` |
-| Start production | `pnpm start` |
-| Lint | `pnpm lint` |
-
-## Documentation
-
-- `frontend/project_overview.md` – High-level overview of the frontend app.  
-- `backend/CLAUDE.md` – Backend-specific guidance (API, pipeline, storage).  
-- Root `CLAUDE.md` – Monorepo-level guidance and entry points.
-
-# Tiny Researcher Project Overview
-
-## Project Description
-
-**Tiny Researcher** is an AI-powered research assistant designed for paper discovery, evidence extraction, and citation-grounded report synthesis. It features a pipeline that guides users through clarifying research questions, planning, collecting papers, and generating synthesized reports.
-
-## Tech Stack
-
-| Category | Technology |
-|----------|------------|
-| **Framework** | Next.js 16.1.6 + React 19.2.3 |
-| **Language** | TypeScript |
-| **Routing** | Next.js App Router |
-| **State Management** | @tanstack/react-query (Server State) |
-| **Styling** | CSS Modules |
-| **Icons** | lucide-react |
-| **Data Fetching** | Axios |
-| **Data Visualization** | Recharts |
-| **Markdown Rendering** | react-markdown, remark-gfm |
-| **Linting** | ESLint |
-
-## Project Structure
-
-The project is structured as a standard Next.js App Router application.
-
-```mermaid
-graph TD
-    Root[frontend/] --> Agents[.agents/]
-    Root --> Public[public/]
-    Root --> Src[src/]
-    Src --> App[app/]
-    Src --> Components[components/]
-    Src --> Hooks[hooks/]
-    Src --> Lib[lib/]
-    Src --> Services[services/]
-    Src --> Styles[styles/]
-    App --> RootPage[page.tsx (Dashboard)]
-    App --> Papers[papers/]
-    App --> Reports[reports/]
-    App --> Research[research/]
-    Components --> Chat[chat/]
-    Components --> Layout[layout/]
-    Components --> UI[ui/]
-```
-
-## Architecture Map
-
-| Layer | Location | Description |
-|-------|----------|-------------|
-| **UI Components** | `src/components/{ui,chat,layout}` | Reusable presentation components. |
-| **Pages/Routes** | `src/app` | Application routes and page-specific logic. |
-| **Layouts** | `src/app/layout.tsx`, `src/components/layout` | Global application shell and providers. |
-| **Data Fetching** | `src/services`, `src/hooks` | Service functions wrapping Axios calls; React Query hooks. |
-| **State** | `src/app/providers.tsx` | Global providers (React Query Client). |
-| **Config/Utils** | `src/lib` | Constants (`constants.ts`) and utility functions (`utils.ts`). |
-| **Backend API** | External (FastAPI) | Connected via `API_BASE_URL` (default: `http://localhost:8000/api/v1`). |
-
-## Data Flow
-
-User actions trigger React components, which use custom hooks (often wrapping React Query) to call service functions. These services use a configured Axios instance to communicate with the Python FastAPI backend.
-
-## Key Features & Pipelines
-
-The application is built around a research pipeline with the following phases:
-
-1.  **Clarify**: Refine the research question.
-2.  **Plan**: Create a research plan.
-3.  **Collect & Dedup**: Search for and deduplicate papers.
-4.  **Screening**: Filter papers based on relevance.
-5.  **Approval Gate**: Human-in-the-loop approval.
-6.  **PDF Loading**: Fetch full text of papers.
-7.  **Evidence Extraction**: Extract key findings.
-8.  **Clustering**: Group similar findings.
-9.  **Taxonomy**: Organize findings into a structure.
-10. **Claims + Gaps**: Identify supported claims and missing info.
-11. **Grounded Synthesis**: Write the report.
-12. **Citation Audit**: Verify citations.
-
-## Configuration
-
-*   **API URL**: Configurable via `NEXT_PUBLIC_API_URL` env var. Defaults to `http://localhost:8000/api/v1`.
+1. Authentication is not yet implemented in the frontend.
+2. The `useResearchChat` hook manages all streaming state — avoid creating parallel SSE connections.
+3. Backend must be running for the frontend to function (no mock/offline mode).

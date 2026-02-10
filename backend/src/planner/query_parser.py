@@ -15,29 +15,54 @@ logger = logging.getLogger(__name__)
 
 # URL pattern for detection
 URL_PATTERN = re.compile(
-    r'https?://(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}'
-    r'\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)'
+    r"https?://(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}"
+    r"\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
 )
 
 # Keywords indicating QUICK mode (multilingual)
 QUICK_KEYWORDS: Set[str] = {
     # English
-    "quick", "fast", "brief", "simple", "basic", "short", "just find",
+    "quick",
+    "fast",
+    "brief",
+    "simple",
+    "basic",
+    "short",
+    "just find",
     # Vietnamese
-    "nhanh", "ngắn", "đơn giản", "cơ bản",
+    "nhanh",
+    "ngắn",
+    "đơn giản",
+    "cơ bản",
     # Chinese
-    "快速", "简单", "基本",
+    "快速",
+    "简单",
+    "基本",
 }
 
 # Keywords indicating FULL mode (multilingual)
 FULL_KEYWORDS: Set[str] = {
     # English
-    "comprehensive", "thorough", "complete", "detailed", "in-depth",
-    "survey", "overview", "full", "deep", "all",
+    "comprehensive",
+    "thorough",
+    "complete",
+    "detailed",
+    "in-depth",
+    "survey",
+    "overview",
+    "full",
+    "deep",
+    "all",
     # Vietnamese
-    "toàn diện", "chi tiết", "đầy đủ", "sâu",
+    "toàn diện",
+    "chi tiết",
+    "đầy đủ",
+    "sâu",
     # Chinese
-    "全面", "详细", "完整", "深入",
+    "全面",
+    "详细",
+    "完整",
+    "深入",
 }
 
 
@@ -88,7 +113,7 @@ class QueryParser:
             has_urls=has_urls,
             urls=urls,
             skip_synthesis=(query_type == QueryType.QUICK),
-            confidence=0.8
+            confidence=0.8,
         )
 
     def _detect_type(self, query_lower: str, words: Set[str]) -> QueryType:
@@ -109,10 +134,17 @@ class QueryParser:
         # Remove common prefixes (multilingual)
         prefixes = [
             # English
-            "research", "find papers on", "search for", "look up",
-            "survey of", "overview of", "tell me about",
+            "research",
+            "find papers on",
+            "search for",
+            "look up",
+            "survey of",
+            "overview of",
+            "tell me about",
             # Vietnamese
-            "nghiên cứu về", "tìm bài báo về", "tìm kiếm",
+            "nghiên cứu về",
+            "tìm bài báo về",
+            "tìm kiếm",
         ]
 
         result = query.strip()
@@ -120,7 +152,7 @@ class QueryParser:
 
         for prefix in prefixes:
             if result_lower.startswith(prefix):
-                result = result[len(prefix):].strip()
+                result = result[len(prefix) :].strip()
                 result_lower = result.lower()
 
         return result if result else query
@@ -134,13 +166,19 @@ class QueryParser:
         if query.query_type == QueryType.QUICK:
             return {
                 "active_phases": ["planning", "execution", "persistence", "analysis"],
-                "skip_synthesis": True
+                "skip_synthesis": True,
             }
         else:  # FULL
             return {
                 "active_phases": [
-                    "planning", "execution", "persistence", "analysis",
-                    "pdf_loading", "summarization", "clustering", "writing"
+                    "planning",
+                    "execution",
+                    "persistence",
+                    "analysis",
+                    "pdf_loading",
+                    "summarization",
+                    "clustering",
+                    "writing",
                 ],
-                "skip_synthesis": False
+                "skip_synthesis": False,
             }

@@ -1,5 +1,6 @@
 'use client';
 
+import { detectLanguage } from '@/lib/i18n';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '@/components/ui/Toast';
 import { AuthProvider } from '@/hooks/useAuth';
@@ -74,6 +75,10 @@ function ThemeProvider({ children }: { children: ReactNode }) {
 // ---------- Root Providers ----------
 
 export default function Providers({ children }: { children: ReactNode }) {
+    useEffect(() => {
+        detectLanguage();
+    }, []);
+
     return (
         <QueryClientProvider client={queryClient}>
             <ThemeProvider>

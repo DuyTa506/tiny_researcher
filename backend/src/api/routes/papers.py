@@ -24,6 +24,7 @@ paper_repo = PaperRepository()
 
 # ── Schemas ──
 
+
 class PaperCreateRequest(BaseModel):
     title: str
     abstract: str = ""
@@ -55,6 +56,7 @@ class PaginatedResponse(BaseModel):
 
 
 # ── Endpoints ──
+
 
 @router.get("")
 async def list_papers(
@@ -177,10 +179,12 @@ async def delete_paper(
 
 # ── Related data endpoints ──
 
+
 @router.get("/{paper_id}/study-card")
 async def get_study_card(paper_id: str):
     """Get study card for a paper."""
     from src.storage.repositories import StudyCardRepository
+
     repo = StudyCardRepository()
     card = await repo.get_by_paper(paper_id)
     if not card:
@@ -192,6 +196,7 @@ async def get_study_card(paper_id: str):
 async def get_screening_record(paper_id: str):
     """Get screening record for a paper."""
     from src.storage.repositories import ScreeningRecordRepository
+
     repo = ScreeningRecordRepository()
     record = await repo.get_by_paper(paper_id)
     if not record:
@@ -203,6 +208,7 @@ async def get_screening_record(paper_id: str):
 async def get_evidence_spans(paper_id: str):
     """Get evidence spans for a paper."""
     from src.storage.repositories import EvidenceSpanRepository
+
     repo = EvidenceSpanRepository()
     spans = await repo.get_by_paper(paper_id)
     return [s.model_dump() for s in spans]

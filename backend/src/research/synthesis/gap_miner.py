@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class FutureDirection(BaseModel):
     """A research direction grounded in evidence."""
+
     direction_type: str  # open_problem | research_opportunity | next_experiment
     title: str
     description: str
@@ -92,12 +93,14 @@ class GapMinerService:
             ]
             for i, lim_text in enumerate(card.limitations):
                 span = limitation_spans[i] if i < len(limitation_spans) else None
-                limitations.append({
-                    "paper_id": card.paper_id,
-                    "text": lim_text,
-                    "span_id": span.span_id if span else None,
-                    "snippet": span.snippet if span else "",
-                })
+                limitations.append(
+                    {
+                        "paper_id": card.paper_id,
+                        "text": lim_text,
+                        "span_id": span.span_id if span else None,
+                        "snippet": span.snippet if span else "",
+                    }
+                )
 
         return limitations
 
@@ -111,19 +114,23 @@ class GapMinerService:
                     key = (dataset, metric)
                     if key not in result_groups:
                         result_groups[key] = []
-                    result_groups[key].append({
-                        "paper_id": card.paper_id,
-                        "results": card.results,
-                    })
+                    result_groups[key].append(
+                        {
+                            "paper_id": card.paper_id,
+                            "results": card.results,
+                        }
+                    )
 
         contradictions = []
         for (dataset, metric), papers in result_groups.items():
             if len(papers) >= 2:
-                contradictions.append({
-                    "dataset": dataset,
-                    "metric": metric,
-                    "papers": papers,
-                })
+                contradictions.append(
+                    {
+                        "dataset": dataset,
+                        "metric": metric,
+                        "papers": papers,
+                    }
+                )
 
         return contradictions
 
@@ -139,17 +146,29 @@ class GapMinerService:
         """Use LLM to generate future directions from gaps."""
         # Serialize for prompt
         limitations_json = json.dumps(
-            [{"text": l["text"], "span_id": l["span_id"], "paper_id": l["paper_id"]}
-             for l in limitations if l["span_id"]],
+            [
+                {"text": l["text"], "span_id": l["span_id"], "paper_id": l["paper_id"]}
+                for l in limitations
+                if l["span_id"]
+            ],
             indent=1,
         )
 
-        contradictions_json = json.dumps(
-            [{"dataset": c["dataset"], "metric": c["metric"],
-              "paper_count": len(c["papers"])}
-             for c in contradictions],
-            indent=1,
-        ) if contradictions else "None found"
+        contradictions_json = (
+            json.dumps(
+                [
+                    {
+                        "dataset": c["dataset"],
+                        "metric": c["metric"],
+                        "paper_count": len(c["papers"]),
+                    }
+                    for c in contradictions
+                ],
+                indent=1,
+            )
+            if contradictions
+            else "None found"
+        )
 
         holes_str = ", ".join(taxonomy_holes[:20]) if taxonomy_holes else "None found"
 

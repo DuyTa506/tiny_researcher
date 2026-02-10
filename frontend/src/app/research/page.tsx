@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, Suspense, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import {
     Send,
     Microscope,
@@ -15,6 +16,7 @@ import {
     AlertCircle,
     Plus,
     ArrowRight,
+    Loader,
 } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import Stepper, { type StepItem } from '@/components/ui/Stepper';
@@ -37,7 +39,8 @@ import styles from './styles.module.css';
 
 function buildStepperItems(
     pipeline: PipelineStatus | null,
-    pendingApproval: ApprovalGate | null
+    pendingApproval: ApprovalGate | null,
+    t: (key: string) => string
 ): StepItem[] {
     return PIPELINE_PHASES.map((phase, i) => {
         let status: StepItem['status'] = 'pending';
@@ -63,7 +66,7 @@ function buildStepperItems(
 
         return {
             key: phase.key,
-            label: phase.label,
+            label: t(`pipeline.${phase.key}`),
             status,
             detail,
             progress,
@@ -78,10 +81,12 @@ function ChatEventRenderer({
     event,
     onApprove,
     onReject,
+    t,
 }: {
     event: ChatEvent;
     onApprove?: (gateId: string) => void;
     onReject?: (gateId: string) => void;
+    t: (key: string) => string;
 }) {
     switch (event.type) {
         case 'message': {
@@ -136,16 +141,16 @@ function ChatEventRenderer({
                     <div className={styles.screeningCard}>
                         <div className={styles.screeningHeader}>
                             <Filter size={16} />
-                            Screening Summary
+                            {t('research.screeningSummary')}
                         </div>
                         <div className={styles.screeningStats}>
                             <div className={styles.stat}>
                                 <span className={styles.statValue}>{event.screeningSummary.included}</span>
-                                <span className={styles.statLabel}>Included</span>
+                                <span className={styles.statLabel}>{t('research.included')}</span>
                             </div>
                             <div className={styles.stat}>
                                 <span className={styles.statValue}>{event.screeningSummary.excluded}</span>
-                                <span className={styles.statLabel}>Excluded</span>
+                                <span className={styles.statLabel}>{t('research.excluded')}</span>
                             </div>
                         </div>
                         <div className={styles.reasonList}>
@@ -215,23 +220,23 @@ function ChatEventRenderer({
                 <div className={styles.approvalCard}>
                     <div className={styles.approvalHeader}>
                         <Shield size={20} />
-                        Approval Required
+                        {t('research.approvalRequired')}
                     </div>
                     <div className={styles.approvalContext}>{event.gate.context}</div>
                     {event.gate.estimated_cost && (
                         <div className={styles.approvalCost}>
-                            Estimated cost: {event.gate.estimated_cost}
+                            {t('research.estimatedCost')}: {event.gate.estimated_cost}
                         </div>
                     )}
                     <div className={styles.approvalActions}>
                         <Button onClick={() => onApprove(event.gate!.gate_id)} size="sm">
-                            <CheckCircle size={14} /> Approve
+                            <CheckCircle size={14} /> {t('research.approve')}
                         </Button>
                         <Button variant="secondary" onClick={() => onReject(event.gate!.gate_id)} size="sm">
-                            <SkipForward size={14} /> Skip
+                            <SkipForward size={14} /> {t('research.skip')}
                         </Button>
                         <Button variant="ghost" onClick={() => onReject(event.gate!.gate_id)} size="sm">
-                            <XCircle size={14} /> Cancel
+                            <XCircle size={14} /> {t('research.cancel')}
                         </Button>
                     </div>
                 </div>
@@ -247,6 +252,7 @@ function ChatEventRenderer({
 function ResearchContent() {
     const searchParams = useSearchParams();
     const initialId = searchParams.get('id');
+    const { t, i18n } = useTranslation();
 
     const {
         events,
@@ -273,17 +279,25 @@ function ResearchContent() {
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        const text = input.trim();
+        let text = input.trim();
         if (!text) return;
         setInput('');
 
-        if (!conversationId) {
-            await createSession(text);
+        // Inject language instruction if Vietnamese (only for backend, not displayed)
+        let sendText = text;
+        if (i18n.language === 'vi') {
+            sendText += ' (Please conduct this research, write the report, and respond in Vietnamese)';
         }
-        sendMessage(text);
+
+        if (!conversationId) {
+            const newId = await createSession(text);
+            sendMessage(sendText, newId);
+        } else {
+            sendMessage(sendText);
+        }
     };
 
-    const stepperItems = buildStepperItems(pipelineStatus, pendingApproval);
+    const stepperItems = buildStepperItems(pipelineStatus, pendingApproval, t);
     const hasStarted = events.length > 0 || isStreaming;
 
     return (
@@ -292,13 +306,13 @@ function ResearchContent() {
             <aside className={styles.sidebar}>
                 <div className={styles.sidebarHeader}>
                     <div className={styles.sidebarTitle}>
-                        {conversationId ? 'Research Pipeline' : 'New Research'}
+                        {conversationId ? t('research.pipeline') : t('research.newResearch')}
                     </div>
                     <div className={styles.sidebarSub}>
-                        {conversationId ? `ID: ${conversationId.slice(0, 8)}…` : 'Start a conversation to begin'}
+                        {conversationId ? `ID: ${conversationId.slice(0, 8)}…` : t('research.startConversation')}
                     </div>
-                    <div className={`${styles.statusBadge} ${conversationState === 'COMPLETE' ? styles.complete : error ? styles.error : ''}`}>
-                        <Badge variant={conversationState === 'COMPLETE' ? 'high' : conversationState === 'EXECUTING' ? 'info' : 'medium'}>
+                    <div className={`${styles.statusBadge} ${conversationState === 'COMPLETE' ? styles.complete : error ? styles.error : isStreaming ? styles.active : ''}`}>
+                        <Badge variant={conversationState === 'COMPLETE' ? 'high' : conversationState === 'EXECUTING' ? 'info' : isStreaming ? 'info' : 'medium'}>
                             {conversationState}
                         </Badge>
                     </div>
@@ -319,20 +333,20 @@ function ResearchContent() {
             <div className={styles.chatArea}>
                 <div className={styles.chatHeader}>
                     <Microscope size={20} />
-                    <span className={styles.chatTitle}>Research Chat</span>
+                    <span className={styles.chatTitle}>{t('research.chatTitle')}</span>
                     <div className={styles.chatActions}>
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => createSession()}
                         >
-                            <Plus size={14} /> New
+                            <Plus size={14} /> {t('research.new')}
                         </Button>
                     </div>
                 </div>
 
                 {error && (
-                    <div className={styles.errorBanner}>
+                    <div className={styles.errorBanner} role="alert" aria-live="assertive">
                         <AlertCircle size={14} />
                         {error}
                     </div>
@@ -343,10 +357,9 @@ function ResearchContent() {
                         <div className={styles.welcomeIcon}>
                             <Microscope size={28} />
                         </div>
-                        <div className={styles.welcomeTitle}>Research Assistant</div>
+                        <div className={styles.welcomeTitle}>{t('research.welcomeTitle')}</div>
                         <div className={styles.welcomeDesc}>
-                            Describe your research topic. I&apos;ll search papers, screen for relevance,
-                            extract evidence, and generate a citation-grounded report — all streamed live.
+                            {t('research.welcomeDesc')}
                         </div>
                     </div>
                 ) : (
@@ -357,13 +370,23 @@ function ResearchContent() {
                                 event={evt}
                                 onApprove={approveGate}
                                 onReject={rejectGate}
+                                t={t}
                             />
                         ))}
                         {isStreaming && events.length > 0 && !events[events.length - 1]?.isStreaming && (
-                            <div className={styles.typing}>
-                                <Bot size={14} />
-                                Processing
-                                <span className={styles.typingDots}>
+                            <div className={styles.processing}>
+                                <div className={styles.processingIcon}>
+                                    <Loader size={16} />
+                                </div>
+                                <div className={styles.processingText}>
+                                    <span className={styles.processingLabel}>
+                                        {t('research.processing')}
+                                    </span>
+                                    <span className={styles.processingState}>
+                                        {conversationState}
+                                    </span>
+                                </div>
+                                <span className={styles.processingDots}>
                                     <span /><span /><span />
                                 </span>
                             </div>
@@ -385,13 +408,15 @@ function ResearchContent() {
                                     handleSubmit(e);
                                 }
                             }}
-                            placeholder={conversationId ? 'Type a message…' : 'Describe your research topic…'}
+                            placeholder={conversationId ? t('research.typePlaceholder') : t('research.topicPlaceholder')}
                             rows={1}
+                            aria-label={conversationId ? 'Type your message' : 'Enter research topic'}
                         />
                         <button
                             type="submit"
                             className={styles.sendBtn}
                             disabled={!input.trim()}
+                            aria-label="Send message"
                         >
                             <Send size={16} />
                         </button>

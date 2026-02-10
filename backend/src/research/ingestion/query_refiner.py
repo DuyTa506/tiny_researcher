@@ -35,11 +35,11 @@ class QueryRefiner:
             try:
                 from src.adapters.llm import GeminiAdapter
                 from src.core.config import settings
-                api_key = getattr(settings, 'GEMINI_API_KEY', None)
+
+                api_key = getattr(settings, "GEMINI_API_KEY", None)
                 if api_key:
                     self._llm = GeminiAdapter(
-                        api_key=api_key,
-                        model_name="gemini-2.0-flash"
+                        api_key=api_key, model_name="gemini-2.0-flash"
                     )
             except Exception as e:
                 logger.warning(f"query_refiner_llm_init_failed: {e}")
@@ -67,9 +67,7 @@ class QueryRefiner:
         # Try LLM refinement first
         llm = self._get_llm()
         if llm:
-            refined = await self._refine_with_llm(
-                original_query, num_results, tried
-            )
+            refined = await self._refine_with_llm(original_query, num_results, tried)
             if refined:
                 return refined
 
@@ -116,15 +114,16 @@ Return ONLY a JSON array of query strings, nothing else:
             if isinstance(queries, list):
                 # Filter out already-tried queries
                 filtered = [
-                    q for q in queries
+                    q
+                    for q in queries
                     if isinstance(q, str)
                     and q.lower().strip() not in tried
                     and len(q.strip()) > 2
                 ]
                 if filtered:
-                    logger.info("query_refine_llm_success",
-                               original=query,
-                               refined=filtered)
+                    logger.info(
+                        "query_refine_llm_success", original=query, refined=filtered
+                    )
                     return filtered[:3]
 
         except Exception as e:
@@ -160,14 +159,34 @@ Return ONLY a JSON array of query strings, nothing else:
                 suggestions.append(q)
 
         # Remove version numbers and clean up stopwords left behind
-        cleaned = re.sub(r'\b(v?\d+(\.\d+)*)\b', '', query).strip()
+        cleaned = re.sub(r"\b(v?\d+(\.\d+)*)\b", "", query).strip()
         # Remove dangling conjunctions/prepositions
-        cleaned = re.sub(r'\b(and|or|the|a|an|of|for|in|on|to|with)\b', '', cleaned, flags=re.IGNORECASE)
-        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        cleaned = re.sub(
+            r"\b(and|or|the|a|an|of|for|in|on|to|with)\b",
+            "",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
         _add(cleaned)
 
         # Try just significant words (>2 chars, no stopwords)
-        stopwords = {'and', 'or', 'the', 'a', 'an', 'of', 'for', 'in', 'on', 'to', 'with', 'is', 'are', 'was'}
+        stopwords = {
+            "and",
+            "or",
+            "the",
+            "a",
+            "an",
+            "of",
+            "for",
+            "in",
+            "on",
+            "to",
+            "with",
+            "is",
+            "are",
+            "was",
+        }
         words = [w for w in query.split() if len(w) > 2 and w.lower() not in stopwords]
         if len(words) >= 2:
             _add(" ".join(words))

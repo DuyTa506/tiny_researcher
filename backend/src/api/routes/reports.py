@@ -25,12 +25,14 @@ claim_repo = ClaimRepository()
 
 # ── Schemas ──
 
+
 class ReportUpdateRequest(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
 
 
 # ── Endpoints ──
+
 
 @router.get("")
 async def list_reports(
@@ -137,7 +139,10 @@ async def export_report(
         # Simple Markdown-to-HTML conversion
         try:
             import markdown
-            html_content = markdown.markdown(content, extensions=["tables", "fenced_code"])
+
+            html_content = markdown.markdown(
+                content, extensions=["tables", "fenced_code"]
+            )
         except ImportError:
             html_content = f"<pre>{content}</pre>"
 
@@ -169,6 +174,7 @@ async def get_report_claims(report_id: str):
 
     # Get clusters for the plan to find theme IDs
     from src.storage.repositories import ClusterRepository
+
     cluster_repo = ClusterRepository()
     clusters = await cluster_repo.get_by_plan(plan_id)
     theme_ids = [str(c.id) for c in clusters if c.id]
@@ -193,8 +199,38 @@ async def get_report_taxonomy(report_id: str):
         return None
 
     from src.storage.repositories import TaxonomyMatrixRepository
+
     taxonomy_repo = TaxonomyMatrixRepository()
     taxonomy = await taxonomy_repo.get_by_plan(plan_id)
     if not taxonomy:
         return None
     return taxonomy.model_dump()
+
+
+@router.get("/{report_id}/citation-audit")
+async def get_citation_audit(report_id: str):
+    """Get citation audit status derived from claims."""
+    db = get_database()
+    doc = await db[REPORTS_COLLECTION].find_one({"_id": ObjectId(report_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    plan_id = doc.get("plan_id")
+    if not plan_id:
+        return {"total": 0, "verified": 0, "uncertain": 0}
+
+    from src.storage.repositories import ClusterRepository
+
+    cluster_repo = ClusterRepository()
+    clusters = await cluster_repo.get_by_plan(plan_id)
+    theme_ids = [str(c.id) for c in clusters if c.id]
+
+    if not theme_ids:
+        return {"total": 0, "verified": 0, "uncertain": 0}
+
+    claims = await claim_repo.get_by_plan_themes(theme_ids)
+    total = len(claims)
+    uncertain = sum(1 for c in claims if c.uncertainty_flag)
+    verified = total - uncertain
+
+    return {"total": total, "verified": verified, "uncertain": uncertain}

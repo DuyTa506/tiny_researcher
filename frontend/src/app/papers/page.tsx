@@ -84,8 +84,8 @@ export default function PapersPage() {
                         />
 
                         <div className={styles.filterGroup} style={{ marginTop: 'var(--space-md)' }}>
-                            <label>Status</label>
-                            <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+                            <label htmlFor="status-filter">Status</label>
+                            <select id="status-filter" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
                                 <option value="">All Status</option>
                                 {STATUS_OPTIONS.map((s) => (
                                     <option key={s} value={s}>
@@ -96,8 +96,8 @@ export default function PapersPage() {
                         </div>
 
                         <div className={styles.filterGroup} style={{ marginTop: 'var(--space-md)' }}>
-                            <label>Source</label>
-                            <select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }}>
+                            <label htmlFor="source-filter">Source</label>
+                            <select id="source-filter" value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }}>
                                 <option value="">All Sources</option>
                                 {SOURCE_OPTIONS.map((s) => (
                                     <option key={s} value={s}>
@@ -188,6 +188,7 @@ export default function PapersPage() {
                                                             e.preventDefault();
                                                             window.open(paper.url, '_blank');
                                                         }}
+                                                        aria-label="Open paper source in new tab"
                                                     >
                                                         <ExternalLink size={14} />
                                                     </Button>
@@ -201,6 +202,7 @@ export default function PapersPage() {
                                                             title: paper.title,
                                                         })
                                                     }
+                                                    aria-label={`Delete paper: ${paper.title}`}
                                                 >
                                                     <Trash2 size={14} />
                                                 </Button>

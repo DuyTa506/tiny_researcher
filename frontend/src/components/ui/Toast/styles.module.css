@@ -1,31 +1,32 @@
 .container {
     position: fixed;
-    top: var(--space-lg);
-    right: var(--space-lg);
-    z-index: var(--z-toast);
+    top: var(--space-6);
+    right: var(--space-6);
+    z-index: var(--z-notification);
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
+    gap: var(--space-3);
     pointer-events: none;
 }
 
 .toast {
     display: flex;
     align-items: flex-start;
-    gap: var(--space-sm);
-    padding: var(--space-md) var(--space-lg);
-    background: var(--surface);
-    border: 1px solid var(--border);
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-6);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--blur-sm));
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
     min-width: 300px;
     max-width: 420px;
     pointer-events: auto;
-    animation: slideIn var(--transition-base);
+    animation: slideIn var(--duration-normal);
 }
 
 .toast.exiting {
-    animation: slideOut var(--transition-fast) forwards;
+    animation: slideOut var(--duration-normal) forwards;
 }
 
 .icon {
@@ -40,13 +41,13 @@
 
 .title {
     font-size: var(--text-sm);
-    font-weight: var(--font-semibold);
-    color: var(--text-primary);
+    font-weight: var(--weight-semibold);
+    color: var(--color-text);
 }
 
 .message {
     font-size: var(--text-sm);
-    color: var(--text-secondary);
+    color: var(--color-text-muted);
     margin-top: 2px;
 }
 
@@ -59,30 +60,30 @@
     height: 24px;
     border: none;
     background: transparent;
-    color: var(--text-muted);
+    color: var(--color-text-light);
     border-radius: var(--radius-sm);
     cursor: pointer;
 }
 
 .close:hover {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
+    background: var(--color-border-light);
+    color: var(--color-text);
 }
 
 .success .icon {
-    color: var(--success);
+    color: var(--color-success);
 }
 
 .error .icon {
-    color: var(--error);
+    color: var(--color-error);
 }
 
 .warning .icon {
-    color: var(--warning);
+    color: var(--color-warning);
 }
 
 .info .icon {
-    color: var(--info);
+    color: var(--color-info);
 }
 
 @keyframes slideIn {

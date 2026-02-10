@@ -1,7 +1,9 @@
 'use client';
 
 import { Search, Sun, Moon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/app/providers';
+import LanguageSwitcher from '@/components/ui/LanguageSwitcher';
 import styles from './styles.module.css';
 
 interface HeaderProps {
@@ -10,6 +12,7 @@ interface HeaderProps {
 
 export default function Header({ title }: HeaderProps) {
     const { theme, toggleTheme } = useTheme();
+    const { t } = useTranslation();
 
     return (
         <header className={styles.header}>
@@ -23,10 +26,12 @@ export default function Header({ title }: HeaderProps) {
                     <input
                         type="search"
                         className={styles.searchInput}
-                        placeholder="Search papers, reports..."
+                        placeholder={t('header.searchPlaceholder')}
                         aria-label="Search"
                     />
                 </div>
+
+                <LanguageSwitcher />
 
                 <button
                     className={styles.themeToggle}

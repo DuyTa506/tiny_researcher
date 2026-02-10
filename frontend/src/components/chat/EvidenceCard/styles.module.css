@@ -1,8 +1,10 @@
 .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
     padding: var(--space-3) var(--space-4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     animation: slideUp 0.3s ease;
 }
 
@@ -24,7 +26,7 @@
     gap: var(--space-2);
     font-weight: 600;
     font-size: 0.85rem;
-    color: var(--text-primary);
+    color: var(--color-text);
     margin-bottom: var(--space-2);
 }
 
@@ -34,24 +36,24 @@
     font-weight: 700;
     padding: 2px 8px;
     border-radius: var(--radius-sm);
-    background: rgba(139, 92, 246, 0.1);
-    color: var(--accent);
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--color-secondary);
 }
 
 .paperTitle {
     font-size: 0.8rem;
-    color: var(--text-secondary);
+    color: var(--color-text-muted);
     margin-bottom: var(--space-2);
     font-style: italic;
 }
 
 .snippet {
     font-size: 0.78rem;
-    color: var(--text-muted);
-    background: var(--bg-secondary);
+    color: var(--color-text-light);
+    background: var(--color-border-light);
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-md);
-    border-left: 3px solid var(--accent);
+    border-left: 3px solid var(--color-secondary);
     line-height: 1.5;
     font-style: italic;
 }

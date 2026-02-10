@@ -20,18 +20,30 @@ from datetime import datetime
 
 from src.core.schema import ResearchRequest, ResearchPlan
 from src.core.models import (
-    Paper, PaperStatus, StudyCard, EvidenceSpan, Claim, TaxonomyMatrix,
+    Paper,
+    PaperStatus,
+    StudyCard,
+    EvidenceSpan,
+    Claim,
+    TaxonomyMatrix,
 )
 from src.core.database import connect_mongodb
 from src.planner.service import PlannerService
 from src.planner.executor import PlanExecutor, StepStatus
 from src.planner.adaptive_planner import (
-    AdaptivePlannerService, AdaptivePlan, PhaseConfig, LEGACY_PHASE_TEMPLATE,
+    AdaptivePlannerService,
+    AdaptivePlan,
+    PhaseConfig,
+    LEGACY_PHASE_TEMPLATE,
 )
 from src.storage.repositories import (
-    PaperRepository, ClusterRepository, ReportRepository,
-    ScreeningRecordRepository, EvidenceSpanRepository,
-    StudyCardRepository, ClaimRepository,
+    PaperRepository,
+    ClusterRepository,
+    ReportRepository,
+    ScreeningRecordRepository,
+    EvidenceSpanRepository,
+    StudyCardRepository,
+    ClaimRepository,
 )
 from src.research.analysis.analyzer import AnalyzerService
 from src.research.analysis.pdf_loader import PDFLoaderService
@@ -62,6 +74,7 @@ ProgressCallback = Callable[[str, str, dict], Awaitable[None]]
 @dataclass
 class PipelineResult:
     """Result of running the research pipeline."""
+
     plan_id: str
     topic: str
     session_id: Optional[str] = None
@@ -276,9 +289,7 @@ class ResearchPipeline:
                 steps=len(plan.steps),
             )
             logger.info("Phase C: Executing plan (collecting papers)...")
-            executor = PlanExecutor(
-                plan_id=plan_id, cache_manager=self.cache_manager
-            )
+            executor = PlanExecutor(plan_id=plan_id, cache_manager=self.cache_manager)
             await executor.execute(plan)
 
             quality = executor.get_quality_summary()
@@ -293,7 +304,9 @@ class ResearchPipeline:
             for paper in papers:
                 paper.plan_id = plan_id
 
-            await notify("execution", f"Collected {len(papers)} papers", papers=len(papers))
+            await notify(
+                "execution", f"Collected {len(papers)} papers", papers=len(papers)
+            )
             logger.info(f"Collected {len(papers)} unique papers")
 
             # === Phase C (cont): Persistence ===
@@ -311,20 +324,33 @@ class ResearchPipeline:
             # === Branch: Citation-first vs Legacy ===
             if self.use_citation_workflow and phase_config.screening:
                 result = await self._run_citation_pipeline(
-                    request, papers, plan_id, session_id, phase_config,
-                    result, notify,
+                    request,
+                    papers,
+                    plan_id,
+                    session_id,
+                    phase_config,
+                    result,
+                    notify,
                 )
             else:
                 result = await self._run_legacy_pipeline(
-                    request, papers, plan_id, session_id, phase_config,
-                    executor, result, notify,
+                    request,
+                    papers,
+                    plan_id,
+                    session_id,
+                    phase_config,
+                    executor,
+                    result,
+                    notify,
                 )
 
             # Final phase
             await self.memory_manager.transition_phase(session_id, "complete")
             await notify(
-                "complete", "Research complete!",
-                papers=len(result.papers), clusters=len(result.clusters),
+                "complete",
+                "Research complete!",
+                papers=len(result.papers),
+                clusters=len(result.clusters),
             )
 
             result.completed_at = datetime.now()
@@ -403,14 +429,19 @@ class ResearchPipeline:
         study_cards = []
         evidence_spans = []
         if phase_config.evidence_extraction and papers:
-            await self.memory_manager.transition_phase(session_id, "evidence_extraction")
-            await notify("evidence_extraction", f"Extracting evidence from {len(papers)} papers...")
+            await self.memory_manager.transition_phase(
+                session_id, "evidence_extraction"
+            )
+            await notify(
+                "evidence_extraction",
+                f"Extracting evidence from {len(papers)} papers...",
+            )
             logger.info("Phase F: Extracting evidence...")
 
-            extractor = EvidenceExtractorService(
-                self.llm, pdf_loader=self.pdf_loader
+            extractor = EvidenceExtractorService(self.llm, pdf_loader=self.pdf_loader)
+            study_cards, evidence_spans = await extractor.extract_batch(
+                papers, language=language
             )
-            study_cards, evidence_spans = await extractor.extract_batch(papers, language=language)
 
             result.study_cards_created = len(study_cards)
             result.evidence_spans_created = len(evidence_spans)
@@ -443,12 +474,14 @@ class ResearchPipeline:
                     for idx in cluster.paper_indices
                     if idx < len(papers)
                 ]
-                cluster_dicts.append({
-                    "id": cluster.id,
-                    "name": cluster.name,
-                    "description": cluster.description,
-                    "paper_ids": paper_ids,
-                })
+                cluster_dicts.append(
+                    {
+                        "id": cluster.id,
+                        "name": cluster.name,
+                        "description": cluster.description,
+                        "paper_ids": paper_ids,
+                    }
+                )
 
             await notify("clustering", f"Created {len(clusters)} clusters")
             await self.memory_manager.checkpoint(session_id, "clustering")
@@ -485,12 +518,17 @@ class ResearchPipeline:
 
             gap_miner = GapMinerService(self.llm)
             future_directions = await gap_miner.mine_gaps(
-                study_cards, evidence_spans, taxonomy, request.topic,
+                study_cards,
+                evidence_spans,
+                taxonomy,
+                request.topic,
                 language=language,
             )
             result.future_directions = future_directions
 
-            await notify("synthesis", f"Found {len(future_directions)} future directions")
+            await notify(
+                "synthesis", f"Found {len(future_directions)} future directions"
+            )
 
         # === Report Writing ===
         if phase_config.writing and (claims or papers):
@@ -540,12 +578,15 @@ class ResearchPipeline:
         # Store report
         if result.report_markdown:
             from src.core.models import Report
+
             report = Report(
                 plan_id=plan_id,
                 title=f"Research Report: {request.topic}",
                 content=result.report_markdown,
                 paper_count=len(papers),
-                language=request.output_config.language if request.output_config else "en",
+                language=(
+                    request.output_config.language if request.output_config else "en"
+                ),
             )
             report_repo = ReportRepository()
             await report_repo.create(report)
@@ -553,6 +594,7 @@ class ResearchPipeline:
         # Store clusters
         if cluster_dicts:
             from src.core.models import Cluster as ClusterModel
+
             cluster_repo = ClusterRepository()
             for cd in cluster_dicts:
                 cluster_model = ClusterModel(
@@ -597,9 +639,7 @@ class ResearchPipeline:
 
             for paper in papers:
                 if paper.id and paper.relevance_score:
-                    await self.paper_repo.update_score(
-                        paper.id, paper.relevance_score
-                    )
+                    await self.paper_repo.update_score(paper.id, paper.relevance_score)
 
             papers = relevant
             await self.memory_manager.checkpoint(session_id, "analysis")
@@ -608,7 +648,9 @@ class ResearchPipeline:
 
         # --- Phase 5: Full Text Loading ---
         if phase_config.pdf_loading and papers:
-            await notify("pdf_loading", "Loading full text for high-relevance papers...")
+            await notify(
+                "pdf_loading", "Loading full text for high-relevance papers..."
+            )
             logger.info("Phase 5: Loading full text...")
             loaded_count = await self.pdf_loader.load_full_text_batch(papers)
             result.papers_with_full_text = loaded_count
@@ -616,12 +658,16 @@ class ResearchPipeline:
         # --- Phase 6: Summarization ---
         if phase_config.summarization and papers:
             await self.memory_manager.transition_phase(session_id, "summarization")
-            await notify("summarization", f"Generating summaries for {len(papers)} papers...")
+            await notify(
+                "summarization", f"Generating summaries for {len(papers)} papers..."
+            )
             logger.info("Phase 6: Generating summaries...")
 
             summarized_count = 0
             for paper in papers:
-                summary = await self.summarizer.summarize_paper(paper, language=language)
+                summary = await self.summarizer.summarize_paper(
+                    paper, language=language
+                )
                 if summary:
                     paper.summary = summary
                     summarized_count += 1

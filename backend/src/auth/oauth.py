@@ -32,13 +32,16 @@ async def exchange_google_code(code: str) -> dict:
 
     async with httpx.AsyncClient() as client:
         # Step 1: Exchange code for access token
-        token_resp = await client.post(GOOGLE_TOKEN_URL, data={
-            "code": code,
-            "client_id": settings.GOOGLE_CLIENT_ID,
-            "client_secret": settings.GOOGLE_CLIENT_SECRET,
-            "redirect_uri": settings.GOOGLE_REDIRECT_URI,
-            "grant_type": "authorization_code",
-        })
+        token_resp = await client.post(
+            GOOGLE_TOKEN_URL,
+            data={
+                "code": code,
+                "client_id": settings.GOOGLE_CLIENT_ID,
+                "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+                "grant_type": "authorization_code",
+            },
+        )
 
         if token_resp.status_code != 200:
             logger.error(f"Google token exchange failed: {token_resp.text}")

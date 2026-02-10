@@ -12,7 +12,7 @@ from src.conversation.context import (
     ConversationContext,
     DialogueState,
     Message,
-    MessageRole
+    MessageRole,
 )
 from src.conversation.intent import IntentClassifier, UserIntent
 from src.conversation.clarifier import QueryClarifier, ClarificationResult
@@ -27,5 +27,5 @@ __all__ = [
     "UserIntent",
     "QueryClarifier",
     "ClarificationResult",
-    "DialogueManager"
+    "DialogueManager",
 ]

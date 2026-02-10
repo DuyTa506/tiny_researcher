@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import {
   FileText,
   Filter,
@@ -44,6 +45,8 @@ const activityData = [
 ];
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
+
   const papers = useQuery({
     queryKey: ['papers'],
     queryFn: () => paperService.list().then((r) => r.data),
@@ -64,24 +67,24 @@ export default function DashboardPage() {
     (p) => p.status !== 'RAW'
   ).length ?? 0;
   const totalReports = reports.data?.total ?? 0;
-  const sessionsList = (sessions.data as Record<string, string>[] | undefined) ?? [];
+  const sessionsData = sessions.data as { items?: Record<string, string>[]; total?: number } | undefined;
+  const sessionsList = sessionsData?.items ?? [];
   const activeSessions = sessionsList.filter(
     (s) => s.state === 'EXECUTING'
   ).length;
 
   return (
-    <AppShell title="Dashboard">
+    <AppShell title={t('dashboard.title')}>
       {/* Hero */}
       <div className={styles.hero}>
-        <h2 className={styles.heroTitle}>Research Assistant</h2>
+        <h2 className={styles.heroTitle}>{t('dashboard.heroTitle')}</h2>
         <p className={styles.heroSubtitle}>
-          AI-powered paper discovery, evidence extraction, and citation-grounded
-          report synthesis.
+          {t('dashboard.heroSubtitle')}
         </p>
         <Link href="/research">
           <Button variant="secondary" size="lg">
             <Microscope size={18} />
-            Start New Research
+            {t('dashboard.startResearch')}
             <ArrowRight size={16} />
           </Button>
         </Link>
@@ -100,7 +103,7 @@ export default function DashboardPage() {
               ) : (
                 <div className={styles.statValue}>{totalPapers}</div>
               )}
-              <div className={styles.statLabel}>Total Papers</div>
+              <div className={styles.statLabel}>{t('dashboard.totalPapers')}</div>
             </div>
           </div>
         </Card>
@@ -116,7 +119,7 @@ export default function DashboardPage() {
               ) : (
                 <div className={styles.statValue}>{screenedPapers}</div>
               )}
-              <div className={styles.statLabel}>Screened</div>
+              <div className={styles.statLabel}>{t('dashboard.screened')}</div>
             </div>
           </div>
         </Card>
@@ -132,7 +135,7 @@ export default function DashboardPage() {
               ) : (
                 <div className={styles.statValue}>{totalReports}</div>
               )}
-              <div className={styles.statLabel}>Reports</div>
+              <div className={styles.statLabel}>{t('dashboard.reports')}</div>
             </div>
           </div>
         </Card>
@@ -148,7 +151,7 @@ export default function DashboardPage() {
               ) : (
                 <div className={styles.statValue}>{activeSessions}</div>
               )}
-              <div className={styles.statLabel}>Active Research</div>
+              <div className={styles.statLabel}>{t('dashboard.activeResearch')}</div>
             </div>
           </div>
         </Card>
@@ -158,7 +161,7 @@ export default function DashboardPage() {
       <div className={styles.columns}>
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
-            <h3 className={styles.sectionTitle}>Weekly Activity</h3>
+            <h3 className={styles.sectionTitle}>{t('dashboard.weeklyActivity')}</h3>
           </div>
           <Card className={styles.chartCard}>
             <ResponsiveContainer width="100%" height={260}>
@@ -214,10 +217,10 @@ export default function DashboardPage() {
 
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
-            <h3 className={styles.sectionTitle}>Recent Sessions</h3>
+            <h3 className={styles.sectionTitle}>{t('dashboard.recentSessions')}</h3>
             <Link href="/research">
               <Button variant="ghost" size="sm">
-                View All <ArrowRight size={14} />
+                {t('dashboard.viewAll')} <ArrowRight size={14} />
               </Button>
             </Link>
           </div>
@@ -237,7 +240,7 @@ export default function DashboardPage() {
             ) : !sessionsList.length ? (
               <div className={styles.empty}>
                 <Inbox size={40} className={styles.emptyIcon} />
-                <p className={styles.emptyText}>No research sessions yet</p>
+                <p className={styles.emptyText}>{t('dashboard.noSessions')}</p>
               </div>
             ) : (
               <div className={styles.sessionList}>
@@ -250,13 +253,13 @@ export default function DashboardPage() {
                     <div className={styles.sessionItem}>
                       <div
                         className={`${styles.sessionDot} ${session.state === 'EXECUTING'
-                            ? styles.active
-                            : styles.idle
+                          ? styles.active
+                          : styles.idle
                           }`}
                       />
                       <div className={styles.sessionInfo}>
                         <div className={styles.sessionTopic}>
-                          {session.current_topic || session.topic || 'Untitled Research'}
+                          {session.current_topic || session.topic || t('dashboard.untitledResearch')}
                         </div>
                         <div className={styles.sessionDate}>
                           <Clock size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />

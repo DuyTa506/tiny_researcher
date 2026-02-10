@@ -28,7 +28,7 @@ from src.conversation.context import (
     ConversationContext,
     ConversationStore,
     DialogueState,
-    MessageRole
+    MessageRole,
 )
 from src.conversation.intent import IntentClassifier, UserIntent, IntentResult
 from src.conversation.clarifier import QueryClarifier, ClarificationResult
@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DialogueResponse:
     """Response from the dialogue manager."""
+
     message: str
     state: DialogueState
     plan: Optional[AdaptivePlan] = None
@@ -66,21 +67,22 @@ class DialogueManager:
         self,
         llm_client: LLMClientInterface,
         pipeline: Optional[ResearchPipeline] = None,
-        memory: Optional[MemoryManager] = None
+        memory: Optional[MemoryManager] = None,
     ):
         self.llm = llm_client
-        self.pipeline = pipeline or ResearchPipeline(llm_client, use_adaptive_planner=True)
+        self.pipeline = pipeline or ResearchPipeline(
+            llm_client, use_adaptive_planner=True
+        )
         self.intent_classifier = IntentClassifier(llm_client)
         self.clarifier = QueryClarifier(llm_client)
         self.memory = memory or MemoryManager()  # NEW: Memory manager
         self.store = ConversationStore()
         self._contexts: dict[str, ConversationContext] = {}
         self._session_start_times: dict[str, float] = {}  # Track session durations
-        self._progress_callback: Optional[ProgressCallback] = None  # For streaming updates
 
     def set_progress_callback(self, callback: ProgressCallback):
-        """Set callback for execution progress updates."""
-        self._progress_callback = callback
+        """Deprecated: Pass callback to process_message instead."""
+        pass
 
     async def connect(self, redis_url: str = "redis://localhost:6379/0"):
         """Initialize connections."""
@@ -117,7 +119,8 @@ class DialogueManager:
     async def process_message(
         self,
         conversation_id: str,
-        user_message: str
+        user_message: str,
+        progress_callback: Optional[ProgressCallback] = None,
     ) -> DialogueResponse:
         """Process a user message and generate response."""
         context = await self.get_context(conversation_id)
@@ -130,15 +133,19 @@ class DialogueManager:
         # Build context hint for intent classification based on current state
         state_context = self._get_state_context(context)
 
+        # Include recent conversation history for better intent understanding
+        history = context.get_message_history_text(n=6)
+
         # Classify intent using LLM with state context
         intent_result = await self.intent_classifier.classify_with_llm(
-            user_message,
-            context=state_context
+            user_message, context=state_context, history=history
         )
         logger.info(f"Intent: {intent_result.intent.value}")
 
         # Handle based on state
-        response = await self._handle_message(context, intent_result)
+        response = await self._handle_message(
+            context, intent_result, progress_callback=progress_callback
+        )
 
         context.add_assistant_message(response.message)
         await self.store.save(context)
@@ -163,33 +170,34 @@ class DialogueManager:
     async def _handle_message(
         self,
         context: ConversationContext,
-        intent: IntentResult
+        intent: IntentResult,
+        progress_callback: Optional[ProgressCallback] = None,
     ) -> DialogueResponse:
         """Handle message based on current state and intent."""
         state = context.state
 
         if state == DialogueState.IDLE:
-            return await self._handle_idle(context, intent)
+            return await self._handle_idle(context, intent, progress_callback)
         elif state == DialogueState.CLARIFYING:
             return await self._handle_clarifying(context, intent)
         elif state == DialogueState.REVIEWING:
-            return await self._handle_reviewing(context, intent)
+            return await self._handle_reviewing(context, intent, progress_callback)
         elif state == DialogueState.EXECUTING:
             return await self._handle_executing(context, intent)
         elif state == DialogueState.COMPLETE:
-            return await self._handle_complete(context, intent)
+            return await self._handle_complete(context, intent, progress_callback)
         elif state == DialogueState.ERROR:
-            return await self._handle_error(context, intent)
+            return await self._handle_error(context, intent, progress_callback)
         else:
             return DialogueResponse(
-                message="What would you like to research?",
-                state=DialogueState.IDLE
+                message="What would you like to research?", state=DialogueState.IDLE
             )
 
     async def _handle_idle(
         self,
         context: ConversationContext,
-        intent: IntentResult
+        intent: IntentResult,
+        progress_callback: Optional[ProgressCallback] = None,
     ) -> DialogueResponse:
         """Handle messages when idle."""
         language = self._detect_language_from_context(context)
@@ -199,21 +207,25 @@ class DialogueManager:
             context.pending_urls.extend(intent.extracted_urls)
 
         if intent.intent == UserIntent.NEW_TOPIC:
-            return await self._analyze_and_maybe_clarify(context, intent.original_message)
+            return await self._analyze_and_maybe_clarify(
+                context, intent.original_message
+            )
 
         if intent.intent == UserIntent.CHAT:
-            return await self._handle_chat(context, intent)
+            return await self._handle_chat(context, intent, progress_callback)
 
         if intent.intent == UserIntent.OTHER:
             # Treat as potential research topic if long enough
             if len(intent.original_message.split()) >= 3:
-                return await self._analyze_and_maybe_clarify(context, intent.original_message)
+                return await self._analyze_and_maybe_clarify(
+                    context, intent.original_message
+                )
 
-            return await self._handle_chat(context, intent)
+            return await self._handle_chat(context, intent, progress_callback)
 
         return DialogueResponse(
             message=self._get_localized_message("ask_topic", language),
-            state=DialogueState.IDLE
+            state=DialogueState.IDLE,
         )
 
     def _get_localized_message(self, key: str, language: str = "English") -> str:
@@ -224,60 +236,62 @@ class DialogueManager:
                 "Vietnamese": "Không sao cả. Bạn muốn tìm hiểu về gì nữa?",
                 "Spanish": "No hay problema. ¿Qué más te gustaría investigar?",
                 "French": "Pas de problème. Qu'aimeriez-vous rechercher d'autre?",
-                "German": "Kein Problem. Was möchten Sie sonst noch recherchieren?"
+                "German": "Kein Problem. Was möchten Sie sonst noch recherchieren?",
             },
             "plan_cancelled": {
                 "English": "Cancelled. What else would you like to research?",
                 "Vietnamese": "Đã hủy. Bạn muốn tìm hiểu về gì khác?",
                 "Spanish": "Cancelado. ¿Qué más te gustaría investigar?",
                 "French": "Annulé. Qu'aimeriez-vous rechercher d'autre?",
-                "German": "Abgebrochen. Was möchten Sie sonst noch recherchieren?"
+                "German": "Abgebrochen. Was möchten Sie sonst noch recherchieren?",
             },
             "proceed_or_edit": {
                 "English": "Say 'ok' to proceed, 'cancel' to stop, or describe changes.",
                 "Vietnamese": "Nói 'ok' để tiếp tục, 'hủy' để dừng, hoặc mô tả thay đổi.",
                 "Spanish": "Di 'ok' para continuar, 'cancelar' para detener, o describe los cambios.",
                 "French": "Dites 'ok' pour continuer, 'annuler' pour arrêter, ou décrivez les modifications.",
-                "German": "Sagen Sie 'ok' zum Fortfahren, 'abbrechen' zum Stoppen oder beschreiben Sie Änderungen."
+                "German": "Sagen Sie 'ok' zum Fortfahren, 'abbrechen' zum Stoppen oder beschreiben Sie Änderungen.",
             },
             "still_working": {
                 "English": "Still working on the research...",
                 "Vietnamese": "Vẫn đang nghiên cứu...",
                 "Spanish": "Todavía trabajando en la investigación...",
                 "French": "Toujours en train de rechercher...",
-                "German": "Arbeite noch an der Recherche..."
+                "German": "Arbeite noch an der Recherche...",
             },
             "ask_topic": {
                 "English": "What topic would you like to research?",
                 "Vietnamese": "Bạn muốn tìm hiểu về chủ đề gì?",
                 "Spanish": "¿Qué tema te gustaría investigar?",
                 "French": "Quel sujet aimeriez-vous rechercher?",
-                "German": "Welches Thema möchten Sie recherchieren?"
+                "German": "Welches Thema möchten Sie recherchieren?",
             },
             "try_again": {
                 "English": "Let's try again. What would you like to research?",
                 "Vietnamese": "Thử lại nhé. Bạn muốn tìm hiểu về gì?",
                 "Spanish": "Intentémoslo de nuevo. ¿Qué te gustaría investigar?",
                 "French": "Essayons à nouveau. Qu'aimeriez-vous rechercher?",
-                "German": "Versuchen wir es noch einmal. Was möchten Sie recherchieren?"
+                "German": "Versuchen wir es noch einmal. Was möchten Sie recherchieren?",
             },
             "no_plan": {
                 "English": "No plan to execute. What would you like to research?",
                 "Vietnamese": "Không có kế hoạch nào để thực hiện. Bạn muốn tìm hiểu về gì?",
                 "Spanish": "No hay plan para ejecutar. ¿Qué te gustaría investigar?",
                 "French": "Aucun plan à exécuter. Qu'aimeriez-vous rechercher?",
-                "German": "Kein Plan zum Ausführen. Was möchten Sie recherchieren?"
+                "German": "Kein Plan zum Ausführen. Was möchten Sie recherchieren?",
             },
             "proceed_with_understanding": {
                 "English": "(Or say 'ok' to proceed with my understanding)",
                 "Vietnamese": "(Hoặc nói 'ok' để tiếp tục với hiểu biết của tôi)",
                 "Spanish": "(O di 'ok' para continuar con mi comprensión)",
                 "French": "(Ou dites 'ok' pour continuer avec ma compréhension)",
-                "German": "(Oder sagen Sie 'ok', um mit meinem Verständnis fortzufahren)"
+                "German": "(Oder sagen Sie 'ok', um mit meinem Verständnis fortzufahren)",
             },
         }
 
-        return messages.get(key, {}).get(language, messages.get(key, {}).get("English", ""))
+        return messages.get(key, {}).get(
+            language, messages.get(key, {}).get("English", "")
+        )
 
     def _detect_language_from_context(self, context: ConversationContext) -> str:
         """Detect language from conversation context."""
@@ -294,9 +308,7 @@ class DialogueManager:
         return "English"
 
     async def _handle_clarifying(
-        self,
-        context: ConversationContext,
-        intent: IntentResult
+        self, context: ConversationContext, intent: IntentResult
     ) -> DialogueResponse:
         """Handle messages during clarification phase."""
         language = self._detect_language_from_context(context)
@@ -307,7 +319,7 @@ class DialogueManager:
             context.transition_to(DialogueState.IDLE)
             return DialogueResponse(
                 message=self._get_localized_message("cancel_research", language),
-                state=DialogueState.IDLE
+                state=DialogueState.IDLE,
             )
 
         # User provides clarification or says "proceed anyway"
@@ -332,99 +344,117 @@ class DialogueManager:
     async def _handle_reviewing(
         self,
         context: ConversationContext,
-        intent: IntentResult
+        intent: IntentResult,
+        progress_callback: Optional[ProgressCallback] = None,
     ) -> DialogueResponse:
         """Handle messages when reviewing a plan."""
         language = self._detect_language_from_context(context)
 
         if intent.intent == UserIntent.CONFIRM:
-            return await self._execute_plan(context)
+            # execution is handled by API layer calling process_message, 
+            # so we'll need to pass callback if we were running it directly.
+            # But process_message calls _handle_message which calls this.
+            # We need to pass the callback to _execute_plan somehow?
+            # Actually _handle_reviewing calls _execute_plan.
+            # So we need progress_callback in _handle_reviewing signature too if we want to stream execution.
+            return await self._execute_plan(context, progress_callback)
 
         elif intent.intent == UserIntent.CANCEL:
             context.clear_pending_plan()
             context.transition_to(DialogueState.IDLE)
             return DialogueResponse(
                 message=self._get_localized_message("plan_cancelled", language),
-                state=DialogueState.IDLE
+                state=DialogueState.IDLE,
             )
 
         elif intent.intent == UserIntent.EDIT:
             return await self._edit_plan(context, intent.edit_text)
 
         elif intent.intent == UserIntent.NEW_TOPIC:
-            return await self._analyze_and_maybe_clarify(context, intent.original_message)
+            return await self._analyze_and_maybe_clarify(
+                context, intent.original_message
+            )
 
         return DialogueResponse(
             message=self._get_localized_message("proceed_or_edit", language),
             state=DialogueState.REVIEWING,
-            plan=context.pending_plan
+            plan=context.pending_plan,
         )
 
     async def _handle_executing(
-        self,
-        context: ConversationContext,
-        intent: IntentResult
+        self, context: ConversationContext, intent: IntentResult
     ) -> DialogueResponse:
         """Handle messages while executing."""
         language = self._detect_language_from_context(context)
         return DialogueResponse(
             message=self._get_localized_message("still_working", language),
             state=DialogueState.EXECUTING,
-            needs_input=False
+            needs_input=False,
         )
 
     async def _handle_complete(
         self,
         context: ConversationContext,
-        intent: IntentResult
+        intent: IntentResult,
+        progress_callback: Optional[ProgressCallback] = None,
     ) -> DialogueResponse:
         """Handle messages after research is complete."""
 
         if intent.intent == UserIntent.NEW_TOPIC:
-            return await self._analyze_and_maybe_clarify(context, intent.original_message)
+            return await self._analyze_and_maybe_clarify(
+                context, intent.original_message
+            )
 
         if intent.intent == UserIntent.CHAT:
-            return await self._handle_chat(context, intent)
+            return await self._handle_chat(context, intent, progress_callback)
 
         return DialogueResponse(
             message=context.result_summary or "Research complete. Start a new topic?",
-            state=DialogueState.COMPLETE
+            state=DialogueState.COMPLETE,
         )
 
     async def _handle_error(
         self,
         context: ConversationContext,
-        intent: IntentResult
+        intent: IntentResult,
+        progress_callback: Optional[ProgressCallback] = None,
     ) -> DialogueResponse:
         """Handle messages after an error."""
         language = self._detect_language_from_context(context)
 
         if intent.intent == UserIntent.NEW_TOPIC:
-            return await self._analyze_and_maybe_clarify(context, intent.original_message)
+            return await self._analyze_and_maybe_clarify(
+                context, intent.original_message
+            )
 
         if intent.intent == UserIntent.CHAT:
-            return await self._handle_chat(context, intent)
+            return await self._handle_chat(context, intent, progress_callback)
 
         context.transition_to(DialogueState.IDLE)
         return DialogueResponse(
             message=self._get_localized_message("try_again", language),
-            state=DialogueState.IDLE
+            state=DialogueState.IDLE,
         )
 
     async def _handle_chat(
         self,
         context: ConversationContext,
-        intent: IntentResult
+        intent: IntentResult,
+        progress_callback: Optional[ProgressCallback] = None,
     ) -> DialogueResponse:
         """Handle casual conversation - greetings, questions about the agent, etc."""
         language = self._detect_language_from_context(context)
         message = intent.original_message
+        history = context.get_message_history_text(n=6)
 
         if self.llm:
             try:
                 prompt = f"""You are a friendly research assistant. The user is chatting casually with you.
 
-User's message: "{message}"
+Conversation so far:
+{history}
+
+User's latest message: "{message}"
 
 Respond naturally and conversationally in {language}. Keep it brief (1-3 sentences).
 
@@ -437,11 +467,28 @@ Guidelines:
 - Be natural and friendly, like a colleague
 - ALWAYS respond in {language}"""
 
-                response = await self.llm.generate(prompt)
-                return DialogueResponse(
-                    message=response.strip(),
-                    state=context.state
-                )
+                # Use streaming if progress callback is set
+                if progress_callback:
+                    import uuid as _uuid
+                    message_id = str(_uuid.uuid4())
+                    full_response = ""
+                    async for chunk in self.llm.generate_stream(prompt):
+                        full_response += chunk
+                        await progress_callback(
+                            "token_stream",
+                            chunk,
+                            {"token": chunk, "message_id": message_id, "done": False},
+                        )
+                    # Signal streaming complete
+                    await progress_callback(
+                        "token_stream",
+                        "",
+                        {"token": "", "message_id": message_id, "done": True},
+                    )
+                    return DialogueResponse(message=full_response.strip(), state=context.state)
+                else:
+                    response = await self.llm.generate(prompt)
+                    return DialogueResponse(message=response.strip(), state=context.state)
             except Exception as e:
                 logger.warning(f"Chat LLM failed: {e}")
 
@@ -451,18 +498,15 @@ Guidelines:
             "Vietnamese": "Chào bạn! Tôi là trợ lý nghiên cứu. Hãy cho tôi biết chủ đề bạn muốn tìm hiểu, tôi sẽ giúp bạn tìm và phân tích các bài báo khoa học.",
             "Spanish": "¡Hola! Soy un asistente de investigación. Dime un tema y te ayudaré a encontrar y analizar artículos.",
             "French": "Bonjour! Je suis un assistant de recherche. Dites-moi un sujet et je vous aiderai à trouver des articles.",
-            "German": "Hallo! Ich bin ein Forschungsassistent. Nennen Sie mir ein Thema und ich helfe Ihnen, Artikel zu finden."
+            "German": "Hallo! Ich bin ein Forschungsassistent. Nennen Sie mir ein Thema und ich helfe Ihnen, Artikel zu finden.",
         }
 
         return DialogueResponse(
-            message=fallback.get(language, fallback["English"]),
-            state=context.state
+            message=fallback.get(language, fallback["English"]), state=context.state
         )
 
     async def _analyze_and_maybe_clarify(
-        self,
-        context: ConversationContext,
-        topic: str
+        self, context: ConversationContext, topic: str
     ) -> DialogueResponse:
         """
         Analyze the query and decide: clarify or plan directly.
@@ -471,7 +515,7 @@ Guidelines:
         Uses memory to enrich context and decide if clarification is needed.
         """
         context.current_topic = topic
-        user_id = getattr(context, 'user_id', 'default')
+        user_id = getattr(context, "user_id", "default")
 
         # Get memory context for this user/topic
         memory_context = await self.memory.get_context(user_id, topic)
@@ -480,7 +524,8 @@ Guidelines:
         should_skip = await self.memory.should_skip_clarification(user_id, topic)
 
         # Analyze the query
-        clarification = await self.clarifier.analyze(topic)
+        history = context.get_message_history_text(n=6)
+        clarification = await self.clarifier.analyze(topic, conversation_history=history)
 
         # Note: Don't append memory context to clarification.understanding
         # as it causes nested history in stored sessions. Memory context is
@@ -516,23 +561,21 @@ Guidelines:
                 for session in memory_context.similar_sessions[:2]:
                     message += f"\n  - {session}"
 
-            message += "\n\n" + self._get_localized_message("proceed_with_understanding", clarification.detected_language)
-
-            return DialogueResponse(
-                message=message,
-                state=DialogueState.CLARIFYING
+            message += "\n\n" + self._get_localized_message(
+                "proceed_with_understanding", clarification.detected_language
             )
+
+            return DialogueResponse(message=message, state=DialogueState.CLARIFYING)
 
         # Query is clear (or user is experienced), proceed to planning
         return await self._create_plan(context, topic, memory_context)
 
     async def _proceed_to_planning(
-        self,
-        context: ConversationContext
+        self, context: ConversationContext
     ) -> DialogueResponse:
         """Proceed to planning with current understanding."""
         topic = context.current_topic or ""
-        user_id = getattr(context, 'user_id', 'default')
+        user_id = getattr(context, "user_id", "default")
 
         # If we have clarification context, use the enriched understanding
         if context.pending_clarification:
@@ -556,7 +599,7 @@ Guidelines:
         self,
         context: ConversationContext,
         topic: str,
-        memory_context: Optional[MemoryContext] = None
+        memory_context: Optional[MemoryContext] = None,
     ) -> DialogueResponse:
         """Create a research plan, enriched with memory context."""
         context.transition_to(DialogueState.PLANNING)
@@ -590,36 +633,37 @@ Guidelines:
             return DialogueResponse(
                 message=f"**Research Plan:**\n\n{plan_display}\n\nProceed?",
                 state=DialogueState.REVIEWING,
-                plan=plan
+                plan=plan,
             )
 
         except Exception as e:
             logger.error(f"Failed to create plan: {e}")
             context.transition_to(DialogueState.ERROR)
             return DialogueResponse(
-                message=f"Error creating plan: {e}",
-                state=DialogueState.ERROR
+                message=f"Error creating plan: {e}", state=DialogueState.ERROR
             )
 
-    async def _execute_plan(self, context: ConversationContext) -> DialogueResponse:
+    async def _execute_plan(
+        self, context: ConversationContext, progress_callback: Optional[ProgressCallback] = None
+    ) -> DialogueResponse:
         """Execute the approved plan and record to memory."""
         language = self._detect_language_from_context(context)
 
         if not context.pending_plan or not context.current_request:
             return DialogueResponse(
                 message=self._get_localized_message("no_plan", language),
-                state=DialogueState.IDLE
+                state=DialogueState.IDLE,
             )
 
         context.transition_to(DialogueState.EXECUTING)
-        user_id = getattr(context, 'user_id', 'default')
+        user_id = getattr(context, "user_id", "default")
         start_time = time.time()
 
         try:
             result = await self.pipeline.execute_plan(
                 context.current_request,
                 adaptive_plan=context.pending_plan,
-                progress_callback=self._progress_callback
+                progress_callback=progress_callback,
             )
 
             duration = time.time() - start_time
@@ -628,7 +672,9 @@ Guidelines:
 
             # Record successful session to episodic memory
             # Use original_query for topic to avoid nested history in summaries
-            original_query = context.current_request.topic if context.current_request else ""
+            original_query = (
+                context.current_request.topic if context.current_request else ""
+            )
             await self.memory.record_session(
                 user_id=user_id,
                 session_id=result.session_id,
@@ -637,16 +683,16 @@ Guidelines:
                 papers_found=result.unique_papers,
                 relevant_papers=result.relevant_papers,
                 high_relevance_papers=result.high_relevance_papers,
-                sources_used=getattr(result, 'sources_used', []),
+                sources_used=getattr(result, "sources_used", []),
                 outcome=SessionOutcome.SUCCESS,
-                duration_seconds=duration
+                duration_seconds=duration,
             )
 
             # Learn from this interaction
             await self.memory.learn_from_interaction(
                 user_id=user_id,
                 topic=original_query,
-                sources=getattr(result, 'sources_used', [])
+                sources=getattr(result, "sources_used", []),
             )
 
             context.clear_pending_plan()
@@ -655,7 +701,7 @@ Guidelines:
             return DialogueResponse(
                 message=f"Done!\n\n{context.result_summary}",
                 state=DialogueState.COMPLETE,
-                result=result
+                result=result,
             )
 
         except Exception as e:
@@ -663,32 +709,30 @@ Guidelines:
             logger.error(f"Execution failed: {e}")
 
             # Record failed session - use original query for clean topic
-            original_query = context.current_request.topic if context.current_request else ""
+            original_query = (
+                context.current_request.topic if context.current_request else ""
+            )
             await self.memory.record_session(
                 user_id=user_id,
                 session_id=context.conversation_id,
                 topic=original_query,  # Use clean original query
                 original_query=original_query,
                 outcome=SessionOutcome.FAILED,
-                duration_seconds=duration
+                duration_seconds=duration,
             )
 
             context.transition_to(DialogueState.ERROR)
             return DialogueResponse(
-                message=f"Research failed: {e}",
-                state=DialogueState.ERROR
+                message=f"Research failed: {e}", state=DialogueState.ERROR
             )
 
     async def _edit_plan(
-        self,
-        context: ConversationContext,
-        edit_text: str
+        self, context: ConversationContext, edit_text: str
     ) -> DialogueResponse:
         """Edit the pending plan."""
         if not context.pending_plan:
             return DialogueResponse(
-                message="No plan to edit.",
-                state=DialogueState.IDLE
+                message="No plan to edit.", state=DialogueState.IDLE
             )
 
         plan = context.pending_plan.plan
@@ -710,14 +754,16 @@ Guidelines:
                 if keyword in edit_lower:
                     to_remove = edit_lower.split(keyword, 1)[-1].strip()
                     for step in plan.steps:
-                        step.queries = [q for q in step.queries if to_remove not in q.lower()]
+                        step.queries = [
+                            q for q in step.queries if to_remove not in q.lower()
+                        ]
                     break
 
         plan_display = self._format_plan(context.pending_plan)
         return DialogueResponse(
             message=f"Updated:\n\n{plan_display}\n\nProceed?",
             state=DialogueState.REVIEWING,
-            plan=context.pending_plan
+            plan=context.pending_plan,
         )
 
     def _format_plan(self, plan: AdaptivePlan) -> str:
@@ -726,7 +772,7 @@ Guidelines:
             f"**Mode:** {plan.query_info.query_type.value.upper()}",
             f"**Phases:** {', '.join(plan.phase_config.active_phases)}",
             "",
-            "**Steps:**"
+            "**Steps:**",
         ]
         for step in plan.plan.steps:
             queries = ", ".join(step.queries[:3]) if step.queries else "N/A"

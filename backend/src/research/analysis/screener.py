@@ -145,7 +145,9 @@ class ScreenerService:
                     records.append(record)
 
             # Fill missing papers with conservative include
-            screened_indices = {r.get("paper_index", -1) for r in results if isinstance(r, dict)}
+            screened_indices = {
+                r.get("paper_index", -1) for r in results if isinstance(r, dict)
+            }
             for i, paper in enumerate(papers):
                 if i not in screened_indices:
                     pid = paper.id or paper.arxiv_id or paper.title

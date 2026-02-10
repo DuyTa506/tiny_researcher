@@ -21,15 +21,17 @@ logger = logging.getLogger(__name__)
 
 class SessionOutcome(str, Enum):
     """How did the session go?"""
-    SUCCESS = "success"      # User was satisfied
-    PARTIAL = "partial"      # Some useful results
-    FAILED = "failed"        # No useful results
+
+    SUCCESS = "success"  # User was satisfied
+    PARTIAL = "partial"  # Some useful results
+    FAILED = "failed"  # No useful results
     ABANDONED = "abandoned"  # User cancelled
 
 
 @dataclass
 class ResearchEpisode:
     """A single research session memory."""
+
     episode_id: str
     user_id: str
 
@@ -51,7 +53,9 @@ class ResearchEpisode:
     # Outcome
     outcome: SessionOutcome = SessionOutcome.SUCCESS
     user_feedback: str = ""  # Optional feedback
-    useful_papers: List[str] = field(default_factory=list)  # Paper IDs user found useful
+    useful_papers: List[str] = field(
+        default_factory=list
+    )  # Paper IDs user found useful
 
     # Timing
     created_at: datetime = field(default_factory=datetime.now)
@@ -124,9 +128,7 @@ class EpisodicMemory:
         # Save the episode
         episode_key = self._episode_key(episode.episode_id)
         await self.redis.setex(
-            episode_key,
-            self.EPISODE_TTL,
-            json.dumps(episode.to_dict())
+            episode_key, self.EPISODE_TTL, json.dumps(episode.to_dict())
         )
 
         # Add to user's episode list
@@ -148,9 +150,7 @@ class EpisodicMemory:
         return None
 
     async def get_user_episodes(
-        self,
-        user_id: str,
-        limit: int = 10
+        self, user_id: str, limit: int = 10
     ) -> List[ResearchEpisode]:
         """Get recent episodes for a user."""
         if not self.redis:
@@ -168,10 +168,7 @@ class EpisodicMemory:
         return episodes
 
     async def find_similar_episodes(
-        self,
-        user_id: str,
-        topic: str,
-        limit: int = 3
+        self, user_id: str, topic: str, limit: int = 3
     ) -> List[ResearchEpisode]:
         """
         Find past episodes similar to current topic.
@@ -194,11 +191,7 @@ class EpisodicMemory:
         scored.sort(key=lambda x: x[0], reverse=True)
         return [ep for _, ep in scored[:limit]]
 
-    async def get_effective_sources(
-        self,
-        user_id: str,
-        topic: str
-    ) -> List[str]:
+    async def get_effective_sources(self, user_id: str, topic: str) -> List[str]:
         """
         Get sources that worked well for similar topics.
         """
@@ -212,17 +205,11 @@ class EpisodicMemory:
                     source_scores[source] = source_scores.get(source, 0) + 1
 
         # Sort by score
-        sorted_sources = sorted(
-            source_scores.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )
+        sorted_sources = sorted(source_scores.items(), key=lambda x: x[1], reverse=True)
         return [s for s, _ in sorted_sources]
 
     async def get_effective_keywords(
-        self,
-        user_id: str,
-        topic: str
+        self, user_id: str, topic: str
     ) -> tuple[List[str], List[str]]:
         """
         Get keywords that worked/didn't work for similar topics.
@@ -241,9 +228,7 @@ class EpisodicMemory:
         return list(set(effective)), list(set(ineffective))
 
     async def get_context_for_planning(
-        self,
-        user_id: str,
-        topic: str
+        self, user_id: str, topic: str
     ) -> Dict[str, Any]:
         """
         Get relevant context from past episodes for planning.

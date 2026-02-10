@@ -106,7 +106,9 @@ class GroundedWriterService:
 
                 # Add evidence footnotes
                 sections.append("\n**Key evidence:**")
-                for claim in sorted(theme_claims, key=lambda c: c.salience_score, reverse=True)[:5]:
+                for claim in sorted(
+                    theme_claims, key=lambda c: c.salience_score, reverse=True
+                )[:5]:
                     uncertainty = " [uncertain]" if claim.uncertainty_flag else ""
                     sections.append(f"- {claim.claim_text}{uncertainty}")
                     for sid in claim.evidence_span_ids[:2]:
@@ -114,7 +116,9 @@ class GroundedWriterService:
                         if span:
                             paper = paper_map.get(span.paper_id)
                             paper_ref = paper.title[:60] if paper else span.paper_id
-                            sections.append(f'  - *"{span.snippet[:150]}..."* — [{paper_ref}]')
+                            sections.append(
+                                f'  - *"{span.snippet[:150]}..."* — [{paper_ref}]'
+                            )
             else:
                 sections.append("*No grounded claims available for this theme.*")
             sections.append("")
@@ -139,7 +143,7 @@ class GroundedWriterService:
         sections.append("")
 
         # 6. Future research directions
-        section_num = (6 if taxonomy and taxonomy.cells else 5)
+        section_num = 6 if taxonomy and taxonomy.cells else 5
         sections.append(f"## {section_num}. Future Research Directions")
         if future_directions:
             for i, fd in enumerate(future_directions, 1):
@@ -150,7 +154,9 @@ class GroundedWriterService:
                     for sid in fd.evidence_span_ids[:2]:
                         span = span_map.get(sid)
                         if span:
-                            sections.append(f'  - Based on: *"{span.snippet[:150]}..."*')
+                            sections.append(
+                                f'  - Based on: *"{span.snippet[:150]}..."*'
+                            )
                 sections.append(f"  - Source: {fd.gap_source.replace('_', ' ')}")
                 sections.append("")
         else:
@@ -162,7 +168,9 @@ class GroundedWriterService:
             authors = ", ".join(paper.authors[:3]) if paper.authors else "Unknown"
             if len(paper.authors) > 3:
                 authors += " et al."
-            date_str = paper.published_date.strftime("%Y") if paper.published_date else "n.d."
+            date_str = (
+                paper.published_date.strftime("%Y") if paper.published_date else "n.d."
+            )
             url = paper.url or paper.pdf_url or ""
             sections.append(
                 f"{i}. {authors} ({date_str}). *{paper.title}*. [{url}]({url})"
@@ -188,12 +196,14 @@ class GroundedWriterService:
                     paper = paper_map.get(span.paper_id)
                     if paper:
                         papers_cited.append(paper.title[:50])
-            claims_json.append({
-                "claim_id": c.claim_id[:8],
-                "text": c.claim_text,
-                "papers": papers_cited,
-                "uncertain": c.uncertainty_flag,
-            })
+            claims_json.append(
+                {
+                    "claim_id": c.claim_id[:8],
+                    "text": c.claim_text,
+                    "papers": papers_cited,
+                    "uncertain": c.uncertainty_flag,
+                }
+            )
 
         papers_json = []
         seen = set()
@@ -205,14 +215,21 @@ class GroundedWriterService:
                     paper = paper_map.get(span.paper_id)
                     if paper:
                         authors = paper.authors[0] if paper.authors else "Unknown"
-                        year = paper.published_date.strftime("%Y") if paper.published_date else "n.d."
-                        papers_json.append({
-                            "id": span.paper_id,
-                            "short_ref": f"{authors} ({year})",
-                            "title": paper.title[:60],
-                        })
+                        year = (
+                            paper.published_date.strftime("%Y")
+                            if paper.published_date
+                            else "n.d."
+                        )
+                        papers_json.append(
+                            {
+                                "id": span.paper_id,
+                                "short_ref": f"{authors} ({year})",
+                                "title": paper.title[:60],
+                            }
+                        )
 
         import json
+
         prompt = PromptManager.get_prompt(
             "GROUNDED_SYNTHESIS",
             theme_name=theme_name,

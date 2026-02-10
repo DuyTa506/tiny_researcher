@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class ApprovalGate(BaseModel):
     """A pending approval request for a high-cost action."""
+
     gate_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     gate_type: str  # pdf_download | external_crawl | high_token_budget
     context: Dict[str, Any] = Field(default_factory=dict)
@@ -144,8 +145,7 @@ class ApprovalGateManager:
         else:
             # Auto-approve in development mode
             logger.info(
-                f"Auto-approving gate {gate.gate_type} "
-                f"(no approval callback set)"
+                f"Auto-approving gate {gate.gate_type} " f"(no approval callback set)"
             )
             approved = True
 
@@ -161,10 +161,7 @@ class ApprovalGateManager:
         if gate.gate_type == "pdf_download":
             n = gate.context.get("papers_to_download", 0)
             mb = gate.context.get("estimated_bandwidth_mb", 0)
-            return (
-                f"Download PDFs for {n} papers (~{mb}MB bandwidth). "
-                f"Proceed?"
-            )
+            return f"Download PDFs for {n} papers (~{mb}MB bandwidth). " f"Proceed?"
         elif gate.gate_type == "external_crawl":
             urls = gate.context.get("external_urls", [])
             return (
@@ -175,8 +172,5 @@ class ApprovalGateManager:
         elif gate.gate_type == "high_token_budget":
             tokens = gate.context.get("estimated_tokens", 0)
             cost = gate.context.get("estimated_cost_usd", 0)
-            return (
-                f"Estimated {tokens:,} tokens (~${cost:.2f}). "
-                f"Proceed?"
-            )
+            return f"Estimated {tokens:,} tokens (~${cost:.2f}). " f"Proceed?"
         return f"Approval needed for {gate.gate_type}. Proceed?"

@@ -180,9 +180,7 @@ class ClaimGeneratorService:
                     claim_text=claim_text,
                     evidence_span_ids=validated_ids,
                     theme_id=theme_id,
-                    salience_score=self._safe_float(
-                        item.get("salience_score", 0.5)
-                    ),
+                    salience_score=self._safe_float(item.get("salience_score", 0.5)),
                     uncertainty_flag=bool(item.get("uncertainty_flag", False)),
                 )
                 claims.append(claim)

@@ -1,0 +1,98 @@
+{
+    "app": {
+        "name": "Tiny Researcher"
+    },
+    "nav": {
+        "dashboard": "Trang chủ",
+        "research": "Nghiên cứu",
+        "sessions": "Phiên làm việc",
+        "papers": "Bài báo",
+        "reports": "Báo cáo",
+        "profile": "Hồ sơ"
+    },
+    "header": {
+        "searchPlaceholder": "Tìm kiếm bài báo, báo cáo..."
+    },
+    "dashboard": {
+        "title": "Trang chủ",
+        "heroTitle": "Trợ lý Nghiên cứu",
+        "heroSubtitle": "Khám phá bài báo, trích xuất bằng chứng và tổng hợp báo cáo có trích dẫn bằng AI.",
+        "startResearch": "Bắt đầu Nghiên cứu Mới",
+        "totalPapers": "Tổng Bài báo",
+        "screened": "Đã Sàng lọc",
+        "reports": "Báo cáo",
+        "activeResearch": "Đang Nghiên cứu",
+        "weeklyActivity": "Hoạt động Tuần",
+        "recentSessions": "Phiên Gần đây",
+        "viewAll": "Xem tất cả",
+        "noSessions": "Chưa có phiên nghiên cứu nào",
+        "untitledResearch": "Nghiên cứu chưa đặt tên"
+    },
+    "research": {
+        "title": "Nghiên cứu",
+        "pipeline": "Quy trình Nghiên cứu",
+        "newResearch": "Nghiên cứu Mới",
+        "startConversation": "Bắt đầu cuộc trò chuyện để tiến hành",
+        "chatTitle": "Trò chuyện Nghiên cứu",
+        "new": "Mới",
+        "welcomeTitle": "Trợ lý Nghiên cứu",
+        "welcomeDesc": "Mô tả chủ đề nghiên cứu của bạn. Tôi sẽ tìm kiếm bài báo, sàng lọc độ liên quan, trích xuất bằng chứng và tạo báo cáo có trích dẫn — tất cả được phát trực tiếp.",
+        "typePlaceholder": "Nhập tin nhắn…",
+        "topicPlaceholder": "Mô tả chủ đề nghiên cứu của bạn…",
+        "processing": "Đang xử lý",
+        "approvalRequired": "Cần Phê duyệt",
+        "estimatedCost": "Chi phí ước tính",
+        "approve": "Phê duyệt",
+        "skip": "Bỏ qua",
+        "cancel": "Hủy",
+        "screeningSummary": "Tóm tắt Sàng lọc",
+        "included": "Được chọn",
+        "excluded": "Bị loại"
+    },
+    "papers": {
+        "title": "Bài báo"
+    },
+    "reports": {
+        "title": "Báo cáo"
+    },
+    "sessions": {
+        "title": "Phiên làm việc"
+    },
+    "profile": {
+        "title": "Hồ sơ"
+    },
+    "auth": {
+        "login": "Đăng nhập",
+        "register": "Đăng ký",
+        "forgotPassword": "Quên mật khẩu",
+        "resetPassword": "Đặt lại mật khẩu",
+        "verify": "Xác minh"
+    },
+    "common": {
+        "loading": "Đang tải…",
+        "error": "Lỗi",
+        "save": "Lưu",
+        "delete": "Xóa",
+        "confirm": "Xác nhận",
+        "back": "Quay lại"
+    },
+    "pipeline": {
+        "clarify": "Làm rõ",
+        "plan": "Lên kế hoạch",
+        "collect": "Thu thập & Loại trùng",
+        "screening": "Sàng lọc",
+        "hitl_gate": "Cổng Phê duyệt",
+        "pdf_loading": "Tải PDF",
+        "evidence_extraction": "Trích xuất Bằng chứng",
+        "clustering": "Phân cụm",
+        "taxonomy": "Phân loại",
+        "claims_gaps": "Nhận định + Khoảng trống",
+        "grounded_synthesis": "Tổng hợp có Cơ sở",
+        "citation_audit": "Kiểm tra Trích dẫn"
+    },
+    "language": {
+        "en": "English",
+        "vi": "Tiếng Việt",
+        "switchLabel": "Ngôn ngữ"
+    }
+}

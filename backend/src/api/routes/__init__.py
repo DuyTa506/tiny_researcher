@@ -11,6 +11,22 @@ Available routers:
 - reports: Report CRUD and export endpoints
 """
 
-from src.api.routes import auth, sources, planner, conversation, websocket, papers, reports
+from src.api.routes import (
+    auth,
+    sources,
+    planner,
+    conversation,
+    websocket,
+    papers,
+    reports,
+)
 
-__all__ = ["auth", "sources", "planner", "conversation", "websocket", "papers", "reports"]
+__all__ = [
+    "auth",
+    "sources",
+    "planner",
+    "conversation",
+    "websocket",
+    "papers",
+    "reports",
+]

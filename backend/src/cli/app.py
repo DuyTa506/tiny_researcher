@@ -38,7 +38,7 @@ class ResearchCLI:
         llm_client: LLMClientInterface,
         user_id: str = "cli_user",
         redis_url: Optional[str] = None,
-        enable_streaming: bool = True
+        enable_streaming: bool = True,
     ):
         self.llm = llm_client
         self.user_id = user_id
@@ -66,12 +66,11 @@ class ResearchCLI:
 
         # Initialize dialogue manager with streaming pipeline
         from src.research.pipeline import ResearchPipeline
+
         pipeline = ResearchPipeline(self.llm, use_adaptive_planner=True)
 
         self.dialogue = DialogueManager(
-            llm_client=self.llm,
-            pipeline=pipeline,
-            memory=self.memory
+            llm_client=self.llm, pipeline=pipeline, memory=self.memory
         )
 
         # Connect DialogueManager to Redis (for ConversationStore)
@@ -155,7 +154,9 @@ class ResearchCLI:
                 self.display.print_divider("Top Papers")
                 self.display.print_papers(response.result.papers[:5])
 
-        self.display.console.print("\n[bold]Research complete![/bold] Start a new topic or type 'quit' to exit.")
+        self.display.console.print(
+            "\n[bold]Research complete![/bold] Start a new topic or type 'quit' to exit."
+        )
 
     async def _save_report(self, result) -> str:
         """Save report to markdown file."""
@@ -167,11 +168,11 @@ class ResearchCLI:
         reports_dir.mkdir(exist_ok=True)
 
         # Generate filename from topic
-        topic = result.topic if hasattr(result, 'topic') else "research"
+        topic = result.topic if hasattr(result, "topic") else "research"
 
         # Extract English terms for filename (strip non-ASCII characters)
         # This handles Vietnamese/Chinese input by keeping only ASCII words
-        ascii_words = re.findall(r'[a-zA-Z][a-zA-Z0-9-]+', topic)
+        ascii_words = re.findall(r"[a-zA-Z][a-zA-Z0-9-]+", topic)
         if ascii_words:
             safe_topic = "_".join(ascii_words)[:60]
         else:
@@ -182,7 +183,7 @@ class ResearchCLI:
         filepath = reports_dir / filename
 
         # Write report
-        filepath.write_text(result.report_markdown, encoding='utf-8')
+        filepath.write_text(result.report_markdown, encoding="utf-8")
 
         self.display.print_success(f"Report saved to: {filepath}")
         return str(filepath)
@@ -211,9 +212,9 @@ class ResearchCLI:
         # Check if this might trigger execution (confirming in REVIEWING state)
         context = await self.dialogue.get_context(self.conversation_id)
         is_confirming_plan = (
-            context and
-            context.state == DialogueState.REVIEWING and
-            message.lower() in ("yes", "ok", "y", "proceed", "go", "đồng ý", "có")
+            context
+            and context.state == DialogueState.REVIEWING
+            and message.lower() in ("yes", "ok", "y", "proceed", "go", "đồng ý", "có")
         )
 
         if is_confirming_plan:
@@ -223,8 +224,7 @@ class ResearchCLI:
             # Normal processing with status indicator
             with self.display.console.status("[bold cyan]Thinking...[/bold cyan]"):
                 response = await self.dialogue.process_message(
-                    self.conversation_id,
-                    message
+                    self.conversation_id, message
                 )
 
             # Display state
@@ -242,7 +242,9 @@ class ResearchCLI:
                 self.display.print_agent("Here's my research plan:")
                 if response.plan:
                     self.display.print_plan(response.plan)
-                self.display.console.print("\n[bold]Proceed with this plan?[/bold] (yes/no/edit)")
+                self.display.console.print(
+                    "\n[bold]Proceed with this plan?[/bold] (yes/no/edit)"
+                )
 
             elif response.state == DialogueState.COMPLETE:
                 await self._show_results(response)
@@ -295,7 +297,7 @@ Use markdown formatting."""
             streaming.update(
                 phase=phase.replace("_", " ").title(),
                 papers_collected=papers_count,
-                message=message
+                message=message,
             )
 
         # Set the callback on the dialogue manager
@@ -307,8 +309,7 @@ Use markdown formatting."""
 
             # Process the confirmation message (will trigger execution)
             response = await self.dialogue.process_message(
-                self.conversation_id,
-                confirm_message
+                self.conversation_id, confirm_message
             )
 
             streaming.stop()
@@ -379,6 +380,7 @@ async def create_cli_with_openai() -> ResearchCLI:
 async def main():
     """Main entry point for the CLI."""
     from dotenv import load_dotenv
+
     load_dotenv()
 
     # Try Gemini first, then OpenAI

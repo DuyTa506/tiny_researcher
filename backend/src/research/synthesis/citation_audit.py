@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AuditResult:
     """Result of auditing claims for citation support."""
+
     total_claims: int = 0
     audited_claims: int = 0
     passed: int = 0
@@ -73,9 +74,7 @@ class CitationAuditService:
         result = AuditResult(total_claims=len(claims))
 
         # Select claims to audit (above salience threshold)
-        to_audit = [
-            c for c in claims if c.salience_score >= self.SALIENCE_THRESHOLD
-        ]
+        to_audit = [c for c in claims if c.salience_score >= self.SALIENCE_THRESHOLD]
         result.audited_claims = len(to_audit)
 
         failed_claims = []
@@ -121,16 +120,14 @@ class CitationAuditService:
         )
         return result
 
-    async def _verify_support(
-        self, claim: Claim, spans: List[EvidenceSpan]
-    ) -> dict:
+    async def _verify_support(self, claim: Claim, spans: List[EvidenceSpan]) -> dict:
         """Use LLM to verify evidence semantically supports the claim.
 
         Returns dict with 'supported' (bool) and 'severity' (minor|major).
         """
         evidence_snippets = "\n".join(
             [
-                f"[{s.field}] \"{s.snippet}\" (confidence: {s.confidence:.2f})"
+                f'[{s.field}] "{s.snippet}" (confidence: {s.confidence:.2f})'
                 for s in spans
             ]
         )
@@ -175,7 +172,9 @@ class CitationAuditService:
 
         for claim, severity in failed_claims:
             # Get the evidence snippets for context
-            spans = [span_map[sid] for sid in claim.evidence_span_ids if sid in span_map]
+            spans = [
+                span_map[sid] for sid in claim.evidence_span_ids if sid in span_map
+            ]
 
             if not spans:
                 # No evidence at all - mark uncertain

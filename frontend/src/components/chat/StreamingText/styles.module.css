@@ -1,7 +1,7 @@
 .wrapper {
     line-height: 1.65;
     font-size: 0.9rem;
-    color: var(--text-primary);
+    color: var(--color-text);
 }
 
 .wrapper p {
@@ -19,7 +19,7 @@
 }
 
 .wrapper code {
-    background: var(--bg-secondary);
+    background: var(--color-border-light);
     padding: 1px 4px;
     border-radius: 3px;
     font-size: 0.85em;
@@ -29,7 +29,7 @@
     display: inline-block;
     width: 2px;
     height: 1em;
-    background: var(--primary);
+    background: var(--color-primary);
     margin-left: 1px;
     animation: blink 0.8s ease-in-out infinite;
     vertical-align: text-bottom;

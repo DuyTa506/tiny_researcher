@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import date
@@ -7,8 +6,9 @@ from enum import Enum
 
 class QueryType(str, Enum):
     """Simplified query types - just 2 options."""
+
     QUICK = "quick"  # Fast search, skip synthesis (4 phases)
-    FULL = "full"    # Complete research with all phases (8 phases)
+    FULL = "full"  # Complete research with all phases (8 phases)
 
 
 class ResearchQuery(BaseModel):
@@ -16,13 +16,16 @@ class ResearchQuery(BaseModel):
     Simplified research query representation.
     Only essential fields to reduce LLM confusion.
     """
+
     original_query: str = Field(..., description="Original user query")
     query_type: QueryType = Field(QueryType.FULL, description="QUICK or FULL")
     main_topic: str = Field("", description="Primary topic extracted")
 
     # Source hints
     has_urls: bool = Field(False, description="User provided URLs")
-    urls: List[str] = Field(default_factory=list, description="URLs extracted from query")
+    urls: List[str] = Field(
+        default_factory=list, description="URLs extracted from query"
+    )
 
     # Phase control
     skip_synthesis: bool = Field(False, description="Skip synthesis phases (for QUICK)")
@@ -32,80 +35,115 @@ class ResearchQuery(BaseModel):
 
 
 class TimeWindow(BaseModel):
-    start: Optional[date] = Field(None, description="Start date (YYYY-MM-DD). If None, no start limit.")
-    end: Optional[date] = Field(None, description="End date (YYYY-MM-DD). If None, defaults to today.")
+    start: Optional[date] = Field(
+        None, description="Start date (YYYY-MM-DD). If None, no start limit."
+    )
+    end: Optional[date] = Field(
+        None, description="End date (YYYY-MM-DD). If None, defaults to today."
+    )
+
 
 class OutputConfig(BaseModel):
     max_papers: int = Field(20, description="Maximum number of papers to include.")
     language: str = Field("vi", description="Output language (vi/en).")
     format: str = Field("markdown", description="Output format (markdown/pdf).")
-    depth: str = Field("deep", description="Research depth: 'deep' (iterative) or 'shallow' (one-shot).")
+    depth: str = Field(
+        "deep",
+        description="Research depth: 'deep' (iterative) or 'shallow' (one-shot).",
+    )
+
 
 class ResearchRequest(BaseModel):
     """
     Input schema for the Deep Research Agent.
-    
+
     REQUIRED:
     - topic: The core subject to research.
-    
+
     OPTIONAL (Constraints):
     - time_window: usage allows reproducibility (e.g., "last 5 years").
-    
+
     OPTIONAL (Hints - Agent will autofill if missing):
     - keywords: Seed terms. If empty, Planner generates synonyms.
     - research_questions: Specific questions. If empty, Planner decomposes the topic.
     - sources: Specific URLs/feeds. If empty, uses default engines (ArXiv, etc.).
     """
-    
+
     # --- REQUIRED ---
-    topic: str = Field(..., description="The main research topic. E.g. 'Network Intrusion Detection'")
+    topic: str = Field(
+        ..., description="The main research topic. E.g. 'Network Intrusion Detection'"
+    )
 
     # --- OPTIONAL (Constraints) ---
-    time_window: Optional[TimeWindow] = Field(None, description="Time range for paper filtering.")
-    
+    time_window: Optional[TimeWindow] = Field(
+        None, description="Time range for paper filtering."
+    )
+
     # --- OPTIONAL (Hints / Guidance) ---
     keywords: List[str] = Field(
-        default_factory=list, 
-        description="Seed keywords. Agent will expand these."
+        default_factory=list, description="Seed keywords. Agent will expand these."
     )
     sources: List[str] = Field(
-        default_factory=list, 
-        description="Specific RSS feeds or URLs to crawl. If empty, Agent finds its own."
+        default_factory=list,
+        description="Specific RSS feeds or URLs to crawl. If empty, Agent finds its own.",
     )
     research_questions: List[str] = Field(
-        default_factory=list, 
-        description="Specific questions to answer. If empty, Agent generates a plan."
+        default_factory=list,
+        description="Specific questions to answer. If empty, Agent generates a plan.",
     )
-    
+
     # --- OPTIONAL (Configuration) ---
-    output_config: OutputConfig = Field(default_factory=OutputConfig, description="Configuration for the final report.")
+    output_config: OutputConfig = Field(
+        default_factory=OutputConfig, description="Configuration for the final report."
+    )
 
     # --- OPTIONAL (Memory hints) ---
-    min_papers: Optional[int] = Field(None, description="Minimum number of papers to collect.")
-    max_papers: Optional[int] = Field(None, description="Maximum number of papers to collect.")
+    min_papers: Optional[int] = Field(
+        None, description="Minimum number of papers to collect."
+    )
+    max_papers: Optional[int] = Field(
+        None, description="Maximum number of papers to collect."
+    )
 
     # --- OPTIONAL (Citation-first workflow budgets) ---
     max_pdf_download: int = Field(20, description="Max papers to download PDFs for.")
-    token_budget: Optional[int] = Field(None, description="Max estimated tokens for LLM calls.")
+    token_budget: Optional[int] = Field(
+        None, description="Max estimated tokens for LLM calls."
+    )
+
 
 class ResearchStep(BaseModel):
     """
     A single step in the research plan.
     Users can edit these before execution.
-    
+
     Steps can reference registered tools for execution:
     - tool: Name of tool to execute (from tools registry)
     - tool_args: Arguments to pass to the tool
     """
+
     id: int = Field(..., description="Step number (1-indexed)")
-    action: str = Field(..., description="Action type: 'research', 'analyze', 'synthesize'")
+    action: str = Field(
+        ..., description="Action type: 'research', 'analyze', 'synthesize'"
+    )
     title: str = Field(..., description="Human-readable title for this step")
-    description: str = Field(..., description="Detailed description of what this step does")
-    queries: List[str] = Field(default_factory=list, description="Search queries for this step")
-    sources: List[str] = Field(default_factory=list, description="Specific sources to use")
+    description: str = Field(
+        ..., description="Detailed description of what this step does"
+    )
+    queries: List[str] = Field(
+        default_factory=list, description="Search queries for this step"
+    )
+    sources: List[str] = Field(
+        default_factory=list, description="Specific sources to use"
+    )
     tool: Optional[str] = Field(None, description="Tool to execute (from registry)")
-    tool_args: dict = Field(default_factory=dict, description="Arguments for tool execution")
-    expected_output: Optional[str] = Field(None, description="What this step produces: list_papers, study_cards, taxonomy, report, analysis")
+    tool_args: dict = Field(
+        default_factory=dict, description="Arguments for tool execution"
+    )
+    expected_output: Optional[str] = Field(
+        None,
+        description="What this step produces: list_papers, study_cards, taxonomy, report, analysis",
+    )
     completed: bool = Field(False, description="Whether this step has been executed")
 
 
@@ -114,11 +152,14 @@ class ResearchPlan(BaseModel):
     Editable research plan generated by Planner.
     Users can modify steps before execution.
     """
+
     topic: str = Field(..., description="Original research topic")
     summary: str = Field("", description="Brief summary of the research plan")
-    steps: List[ResearchStep] = Field(default_factory=list, description="Ordered list of research steps")
+    steps: List[ResearchStep] = Field(
+        default_factory=list, description="Ordered list of research steps"
+    )
     language: str = Field("vi", description="Output language")
-    
+
     def to_display(self) -> str:
         """Format plan for user display."""
         lines = [f"# Research Plan: {self.topic}", "", self.summary, ""]

@@ -9,12 +9,7 @@ from typing import Optional, List, Dict
 from dataclasses import dataclass, field
 
 from src.adapters.llm import LLMClientInterface
-from src.core.schema import (
-    ResearchRequest,
-    ResearchPlan,
-    ResearchQuery,
-    QueryType
-)
+from src.core.schema import ResearchRequest, ResearchPlan, ResearchQuery, QueryType
 from src.planner.service import PlannerService
 from src.planner.query_parser import QueryParser
 
@@ -24,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PhaseConfig:
     """Configuration for which phases to run."""
+
     active_phases: List[str] = field(default_factory=list)
     skip_synthesis: bool = False
 
@@ -44,8 +40,14 @@ class PhaseConfig:
     def __post_init__(self):
         if not self.active_phases:
             self.active_phases = [
-                "planning", "execution", "persistence", "analysis",
-                "pdf_loading", "summarization", "clustering", "writing"
+                "planning",
+                "execution",
+                "persistence",
+                "analysis",
+                "pdf_loading",
+                "summarization",
+                "clustering",
+                "writing",
             ]
 
     @property
@@ -156,6 +158,7 @@ class AdaptivePlan:
 
     Contains the plan and metadata about how to execute it.
     """
+
     plan: ResearchPlan
     query_info: ResearchQuery
     phase_config: PhaseConfig
@@ -185,26 +188,40 @@ class AdaptivePlan:
 PHASE_TEMPLATES = {
     QueryType.QUICK: PhaseConfig(
         active_phases=["planning", "execution", "persistence", "analysis"],
-        skip_synthesis=True
+        skip_synthesis=True,
     ),
     QueryType.FULL: PhaseConfig(
         active_phases=[
-            "planning", "execution", "persistence", "screening",
-            "pdf_loading", "evidence_extraction", "clustering",
-            "claim_generation", "gap_mining", "writing",
-            "citation_audit", "publish"
+            "planning",
+            "execution",
+            "persistence",
+            "screening",
+            "pdf_loading",
+            "evidence_extraction",
+            "clustering",
+            "claim_generation",
+            "gap_mining",
+            "writing",
+            "citation_audit",
+            "publish",
         ],
-        skip_synthesis=False
-    )
+        skip_synthesis=False,
+    ),
 }
 
 # Legacy template for backward compatibility
 LEGACY_PHASE_TEMPLATE = PhaseConfig(
     active_phases=[
-        "planning", "execution", "persistence", "analysis",
-        "pdf_loading", "summarization", "clustering", "writing"
+        "planning",
+        "execution",
+        "persistence",
+        "analysis",
+        "pdf_loading",
+        "summarization",
+        "clustering",
+        "writing",
     ],
-    skip_synthesis=False
+    skip_synthesis=False,
 )
 
 
@@ -217,9 +234,7 @@ class AdaptivePlannerService:
     """
 
     def __init__(
-        self,
-        llm_client: LLMClientInterface,
-        planner: Optional[PlannerService] = None
+        self, llm_client: LLMClientInterface, planner: Optional[PlannerService] = None
     ):
         self.llm = llm_client
         self.planner = planner or PlannerService(llm_client)
@@ -228,7 +243,7 @@ class AdaptivePlannerService:
     async def create_adaptive_plan(
         self,
         request: ResearchRequest,
-        use_llm_parsing: bool = False  # Default to rules only
+        use_llm_parsing: bool = False,  # Default to rules only
     ) -> AdaptivePlan:
         """
         Create adaptive research plan.
@@ -242,8 +257,7 @@ class AdaptivePlannerService:
         """
         # 1. Parse query to determine QUICK vs FULL
         query_info = await self.query_parser.parse(
-            request.topic,
-            use_llm=use_llm_parsing
+            request.topic, use_llm=use_llm_parsing
         )
 
         logger.info(f"Query type: {query_info.query_type.value}")
@@ -255,18 +269,13 @@ class AdaptivePlannerService:
 
         # 3. Get phase config
         phase_config = PHASE_TEMPLATES.get(
-            query_info.query_type,
-            PHASE_TEMPLATES[QueryType.FULL]
+            query_info.query_type, PHASE_TEMPLATES[QueryType.FULL]
         )
 
         # 4. Generate plan
         plan = await self.planner.generate_research_plan(request)
 
-        return AdaptivePlan(
-            plan=plan,
-            query_info=query_info,
-            phase_config=phase_config
-        )
+        return AdaptivePlan(plan=plan, query_info=query_info, phase_config=phase_config)
 
     async def quick_parse(self, topic: str) -> ResearchQuery:
         """Quick parsing without full plan generation."""

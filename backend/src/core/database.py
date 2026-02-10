@@ -29,28 +29,28 @@ def get_database_name() -> str:
 async def connect_mongodb() -> AsyncIOMotorDatabase:
     """Connect to MongoDB and return database instance."""
     global _client, _database
-    
+
     if _database is not None:
         return _database
-    
+
     mongo_url = get_mongo_url()
     db_name = get_database_name()
-    
+
     logger.info(f"Connecting to MongoDB: {mongo_url}")
     _client = AsyncIOMotorClient(mongo_url)
     _database = _client[db_name]
-    
+
     # Test connection
-    await _client.admin.command('ping')
+    await _client.admin.command("ping")
     logger.info(f"Connected to MongoDB database: {db_name}")
-    
+
     return _database
 
 
 async def close_mongodb():
     """Close MongoDB connection."""
     global _client, _database
-    
+
     if _client:
         _client.close()
         _client = None

@@ -162,13 +162,15 @@ export default function PaperDetailPage() {
                 {/* Title + Score */}
                 <div className={styles.titleRow}>
                     <h1 className={styles.title}>{paper.title}</h1>
-                    <div
-                        className={`${styles.scoreCircle} ${styles[getScoreColor(paper.relevance_score)]
-                            }`}
-                        style={{ width: 48, height: 48, fontSize: 'var(--text-sm)' }}
-                    >
-                        {paper.relevance_score.toFixed(1)}
-                    </div>
+                    {paper.relevance_score != null && (
+                        <div
+                            className={`${styles.scoreCircle} ${styles[getScoreColor(paper.relevance_score)]
+                                }`}
+                            style={{ width: 48, height: 48, fontSize: 'var(--text-sm)' }}
+                        >
+                            {paper.relevance_score.toFixed(1)}
+                        </div>
+                    )}
                 </div>
 
                 {/* Meta */}

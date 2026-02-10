@@ -41,7 +41,8 @@ export default function SessionsPage() {
         },
     });
 
-    const sessions = (data as Record<string, string>[] | undefined) ?? [];
+    const sessionsData = data as { items?: Record<string, string>[]; total?: number } | undefined;
+    const sessions = sessionsData?.items ?? [];
 
     return (
         <AppShell title="Sessions">
