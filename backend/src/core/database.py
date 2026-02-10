@@ -70,3 +70,15 @@ PAPERS_COLLECTION = "papers"
 CLUSTERS_COLLECTION = "clusters"
 REPORTS_COLLECTION = "reports"
 PLANS_COLLECTION = "plans"
+
+# Citation-first workflow collections
+SCREENING_RECORDS_COLLECTION = "screening_records"
+EVIDENCE_SPANS_COLLECTION = "evidence_spans"
+STUDY_CARDS_COLLECTION = "study_cards"
+CLAIMS_COLLECTION = "claims"
+
+# Taxonomy
+TAXONOMY_MATRIX_COLLECTION = "taxonomy_matrices"
+
+# Auth collections
+USERS_COLLECTION = "users"

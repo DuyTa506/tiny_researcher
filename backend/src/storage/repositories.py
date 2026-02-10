@@ -9,8 +9,15 @@ from datetime import datetime
 from bson import ObjectId
 import logging
 
-from src.core.database import get_database, PAPERS_COLLECTION, CLUSTERS_COLLECTION, REPORTS_COLLECTION
-from src.core.models import Paper, PaperStatus, Cluster, Report
+from src.core.database import (
+    get_database, PAPERS_COLLECTION, CLUSTERS_COLLECTION, REPORTS_COLLECTION,
+    SCREENING_RECORDS_COLLECTION, EVIDENCE_SPANS_COLLECTION,
+    STUDY_CARDS_COLLECTION, CLAIMS_COLLECTION, TAXONOMY_MATRIX_COLLECTION,
+)
+from src.core.models import (
+    Paper, PaperStatus, Cluster, Report,
+    EvidenceSpan, StudyCard, ScreeningRecord, Claim, TaxonomyMatrix
+)
 
 logger = logging.getLogger(__name__)
 
@@ -159,4 +166,238 @@ class ReportRepository:
         if doc:
             doc["_id"] = str(doc["_id"])
             return Report(**doc)
+        return None
+
+
+class ScreeningRecordRepository:
+    """Repository for ScreeningRecord documents."""
+
+    @property
+    def collection(self):
+        return get_database()[SCREENING_RECORDS_COLLECTION]
+
+    async def create(self, record: ScreeningRecord) -> str:
+        doc = record.model_dump(by_alias=True)
+        result = await self.collection.insert_one(doc)
+        return str(result.inserted_id)
+
+    async def create_many(self, records: List[ScreeningRecord]) -> List[str]:
+        if not records:
+            return []
+        docs = [r.model_dump(by_alias=True) for r in records]
+        result = await self.collection.insert_many(docs)
+        return [str(id) for id in result.inserted_ids]
+
+    async def get_by_paper(self, paper_id: str) -> Optional[ScreeningRecord]:
+        doc = await self.collection.find_one({"paper_id": paper_id})
+        if doc:
+            doc.pop("_id", None)
+            return ScreeningRecord(**doc)
+        return None
+
+    async def get_included_paper_ids(self, plan_id: str) -> List[str]:
+        """Get paper_ids that passed screening for a plan."""
+        pipeline = [
+            {"$match": {"include": True}},
+            {"$lookup": {
+                "from": PAPERS_COLLECTION,
+                "localField": "paper_id",
+                "foreignField": "_id",
+                "as": "paper",
+            }},
+            {"$unwind": "$paper"},
+            {"$match": {"paper.plan_id": plan_id}},
+            {"$project": {"paper_id": 1}},
+        ]
+        # Simpler approach: query papers by plan_id first, then filter screening
+        cursor = self.collection.find({"include": True})
+        ids = []
+        async for doc in cursor:
+            ids.append(doc["paper_id"])
+        return ids
+
+    async def get_by_plan_papers(self, paper_ids: List[str]) -> List[ScreeningRecord]:
+        """Get screening records for a list of paper IDs."""
+        cursor = self.collection.find({"paper_id": {"$in": paper_ids}})
+        records = []
+        async for doc in cursor:
+            doc.pop("_id", None)
+            records.append(ScreeningRecord(**doc))
+        return records
+
+    async def count_included(self, paper_ids: List[str]) -> int:
+        return await self.collection.count_documents({
+            "paper_id": {"$in": paper_ids},
+            "include": True,
+        })
+
+    async def count_excluded(self, paper_ids: List[str]) -> int:
+        return await self.collection.count_documents({
+            "paper_id": {"$in": paper_ids},
+            "include": False,
+        })
+
+
+class EvidenceSpanRepository:
+    """Repository for EvidenceSpan documents."""
+
+    @property
+    def collection(self):
+        return get_database()[EVIDENCE_SPANS_COLLECTION]
+
+    async def create(self, span: EvidenceSpan) -> str:
+        doc = span.model_dump(by_alias=True)
+        result = await self.collection.insert_one(doc)
+        return str(result.inserted_id)
+
+    async def create_many(self, spans: List[EvidenceSpan]) -> List[str]:
+        if not spans:
+            return []
+        docs = [s.model_dump(by_alias=True) for s in spans]
+        result = await self.collection.insert_many(docs)
+        return [str(id) for id in result.inserted_ids]
+
+    async def get_by_paper(self, paper_id: str) -> List[EvidenceSpan]:
+        cursor = self.collection.find({"paper_id": paper_id})
+        spans = []
+        async for doc in cursor:
+            doc.pop("_id", None)
+            spans.append(EvidenceSpan(**doc))
+        return spans
+
+    async def get_by_ids(self, span_ids: List[str]) -> List[EvidenceSpan]:
+        cursor = self.collection.find({"span_id": {"$in": span_ids}})
+        spans = []
+        async for doc in cursor:
+            doc.pop("_id", None)
+            spans.append(EvidenceSpan(**doc))
+        return spans
+
+    async def get_by_field(self, paper_id: str, field: str) -> List[EvidenceSpan]:
+        cursor = self.collection.find({"paper_id": paper_id, "field": field})
+        spans = []
+        async for doc in cursor:
+            doc.pop("_id", None)
+            spans.append(EvidenceSpan(**doc))
+        return spans
+
+    async def get_by_paper_ids(self, paper_ids: List[str]) -> List[EvidenceSpan]:
+        cursor = self.collection.find({"paper_id": {"$in": paper_ids}})
+        spans = []
+        async for doc in cursor:
+            doc.pop("_id", None)
+            spans.append(EvidenceSpan(**doc))
+        return spans
+
+
+class StudyCardRepository:
+    """Repository for StudyCard documents."""
+
+    @property
+    def collection(self):
+        return get_database()[STUDY_CARDS_COLLECTION]
+
+    async def create(self, card: StudyCard) -> str:
+        doc = card.model_dump(by_alias=True)
+        result = await self.collection.insert_one(doc)
+        return str(result.inserted_id)
+
+    async def create_many(self, cards: List[StudyCard]) -> List[str]:
+        if not cards:
+            return []
+        docs = [c.model_dump(by_alias=True) for c in cards]
+        result = await self.collection.insert_many(docs)
+        return [str(id) for id in result.inserted_ids]
+
+    async def get_by_paper(self, paper_id: str) -> Optional[StudyCard]:
+        doc = await self.collection.find_one({"paper_id": paper_id})
+        if doc:
+            doc.pop("_id", None)
+            return StudyCard(**doc)
+        return None
+
+    async def get_by_paper_ids(self, paper_ids: List[str]) -> List[StudyCard]:
+        cursor = self.collection.find({"paper_id": {"$in": paper_ids}})
+        cards = []
+        async for doc in cursor:
+            doc.pop("_id", None)
+            cards.append(StudyCard(**doc))
+        return cards
+
+
+class ClaimRepository:
+    """Repository for Claim documents."""
+
+    @property
+    def collection(self):
+        return get_database()[CLAIMS_COLLECTION]
+
+    async def create(self, claim: Claim) -> str:
+        doc = claim.model_dump(by_alias=True)
+        result = await self.collection.insert_one(doc)
+        return str(result.inserted_id)
+
+    async def create_many(self, claims: List[Claim]) -> List[str]:
+        if not claims:
+            return []
+        docs = [c.model_dump(by_alias=True) for c in claims]
+        result = await self.collection.insert_many(docs)
+        return [str(id) for id in result.inserted_ids]
+
+    async def get_by_theme(self, theme_id: str) -> List[Claim]:
+        cursor = self.collection.find({"theme_id": theme_id})
+        claims = []
+        async for doc in cursor:
+            doc.pop("_id", None)
+            claims.append(Claim(**doc))
+        return claims
+
+    async def get_by_plan_themes(self, theme_ids: List[str]) -> List[Claim]:
+        cursor = self.collection.find({"theme_id": {"$in": theme_ids}})
+        claims = []
+        async for doc in cursor:
+            doc.pop("_id", None)
+            claims.append(Claim(**doc))
+        return claims
+
+    async def get_uncited(self) -> List[Claim]:
+        cursor = self.collection.find({"evidence_span_ids": {"$size": 0}})
+        claims = []
+        async for doc in cursor:
+            doc.pop("_id", None)
+            claims.append(Claim(**doc))
+        return claims
+
+    async def update_evidence(self, claim_id: str, span_ids: List[str]) -> bool:
+        result = await self.collection.update_one(
+            {"claim_id": claim_id},
+            {"$set": {"evidence_span_ids": span_ids}},
+        )
+        return result.modified_count > 0
+
+    async def update_claim(self, claim_id: str, updates: Dict[str, Any]) -> bool:
+        result = await self.collection.update_one(
+            {"claim_id": claim_id},
+            {"$set": updates},
+        )
+        return result.modified_count > 0
+
+
+class TaxonomyMatrixRepository:
+    """Repository for TaxonomyMatrix documents."""
+
+    @property
+    def collection(self):
+        return get_database()[TAXONOMY_MATRIX_COLLECTION]
+
+    async def create(self, taxonomy: TaxonomyMatrix) -> str:
+        doc = taxonomy.model_dump(exclude={"id"}, by_alias=True)
+        result = await self.collection.insert_one(doc)
+        return str(result.inserted_id)
+
+    async def get_by_plan(self, plan_id: str) -> Optional[TaxonomyMatrix]:
+        doc = await self.collection.find_one({"plan_id": plan_id})
+        if doc:
+            doc["_id"] = str(doc["_id"])
+            return TaxonomyMatrix(**doc)
         return None

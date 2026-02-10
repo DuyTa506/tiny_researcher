@@ -8,7 +8,7 @@ Usage:
     from src.tools import execute_tool, get_tools_for_llm, TOOL_REGISTRY
     
     # Execute a tool
-    results = await execute_tool("arxiv_search", query="LLM agents")
+    results = await execute_tool("search", query="LLM agents")
     
     # Get tools in OpenAI format for LLM
     tools_schema = get_tools_for_llm()

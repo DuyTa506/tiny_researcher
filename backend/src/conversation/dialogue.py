@@ -192,24 +192,106 @@ class DialogueManager:
         intent: IntentResult
     ) -> DialogueResponse:
         """Handle messages when idle."""
+        language = self._detect_language_from_context(context)
+
+        # Store any URLs found in the message
+        if intent.extracted_urls:
+            context.pending_urls.extend(intent.extracted_urls)
 
         if intent.intent == UserIntent.NEW_TOPIC:
             return await self._analyze_and_maybe_clarify(context, intent.original_message)
 
+        if intent.intent == UserIntent.CHAT:
+            return await self._handle_chat(context, intent)
+
         if intent.intent == UserIntent.OTHER:
             # Treat as potential research topic if long enough
-            if len(intent.original_message.split()) >= 2:
+            if len(intent.original_message.split()) >= 3:
                 return await self._analyze_and_maybe_clarify(context, intent.original_message)
 
-            return DialogueResponse(
-                message=self._get_help_text(),
-                state=DialogueState.IDLE
-            )
+            return await self._handle_chat(context, intent)
 
         return DialogueResponse(
-            message="What topic would you like to research?",
+            message=self._get_localized_message("ask_topic", language),
             state=DialogueState.IDLE
         )
+
+    def _get_localized_message(self, key: str, language: str = "English") -> str:
+        """Get localized message based on detected language."""
+        messages = {
+            "cancel_research": {
+                "English": "No problem. What else would you like to research?",
+                "Vietnamese": "Không sao cả. Bạn muốn tìm hiểu về gì nữa?",
+                "Spanish": "No hay problema. ¿Qué más te gustaría investigar?",
+                "French": "Pas de problème. Qu'aimeriez-vous rechercher d'autre?",
+                "German": "Kein Problem. Was möchten Sie sonst noch recherchieren?"
+            },
+            "plan_cancelled": {
+                "English": "Cancelled. What else would you like to research?",
+                "Vietnamese": "Đã hủy. Bạn muốn tìm hiểu về gì khác?",
+                "Spanish": "Cancelado. ¿Qué más te gustaría investigar?",
+                "French": "Annulé. Qu'aimeriez-vous rechercher d'autre?",
+                "German": "Abgebrochen. Was möchten Sie sonst noch recherchieren?"
+            },
+            "proceed_or_edit": {
+                "English": "Say 'ok' to proceed, 'cancel' to stop, or describe changes.",
+                "Vietnamese": "Nói 'ok' để tiếp tục, 'hủy' để dừng, hoặc mô tả thay đổi.",
+                "Spanish": "Di 'ok' para continuar, 'cancelar' para detener, o describe los cambios.",
+                "French": "Dites 'ok' pour continuer, 'annuler' pour arrêter, ou décrivez les modifications.",
+                "German": "Sagen Sie 'ok' zum Fortfahren, 'abbrechen' zum Stoppen oder beschreiben Sie Änderungen."
+            },
+            "still_working": {
+                "English": "Still working on the research...",
+                "Vietnamese": "Vẫn đang nghiên cứu...",
+                "Spanish": "Todavía trabajando en la investigación...",
+                "French": "Toujours en train de rechercher...",
+                "German": "Arbeite noch an der Recherche..."
+            },
+            "ask_topic": {
+                "English": "What topic would you like to research?",
+                "Vietnamese": "Bạn muốn tìm hiểu về chủ đề gì?",
+                "Spanish": "¿Qué tema te gustaría investigar?",
+                "French": "Quel sujet aimeriez-vous rechercher?",
+                "German": "Welches Thema möchten Sie recherchieren?"
+            },
+            "try_again": {
+                "English": "Let's try again. What would you like to research?",
+                "Vietnamese": "Thử lại nhé. Bạn muốn tìm hiểu về gì?",
+                "Spanish": "Intentémoslo de nuevo. ¿Qué te gustaría investigar?",
+                "French": "Essayons à nouveau. Qu'aimeriez-vous rechercher?",
+                "German": "Versuchen wir es noch einmal. Was möchten Sie recherchieren?"
+            },
+            "no_plan": {
+                "English": "No plan to execute. What would you like to research?",
+                "Vietnamese": "Không có kế hoạch nào để thực hiện. Bạn muốn tìm hiểu về gì?",
+                "Spanish": "No hay plan para ejecutar. ¿Qué te gustaría investigar?",
+                "French": "Aucun plan à exécuter. Qu'aimeriez-vous rechercher?",
+                "German": "Kein Plan zum Ausführen. Was möchten Sie recherchieren?"
+            },
+            "proceed_with_understanding": {
+                "English": "(Or say 'ok' to proceed with my understanding)",
+                "Vietnamese": "(Hoặc nói 'ok' để tiếp tục với hiểu biết của tôi)",
+                "Spanish": "(O di 'ok' para continuar con mi comprensión)",
+                "French": "(Ou dites 'ok' pour continuer avec ma compréhension)",
+                "German": "(Oder sagen Sie 'ok', um mit meinem Verständnis fortzufahren)"
+            },
+        }
+
+        return messages.get(key, {}).get(language, messages.get(key, {}).get("English", ""))
+
+    def _detect_language_from_context(self, context: ConversationContext) -> str:
+        """Detect language from conversation context."""
+        # Check recent messages for language indicators
+        recent_messages = context.messages[-3:] if context.messages else []
+
+        for msg in reversed(recent_messages):
+            if msg.role == MessageRole.USER:
+                # Use clarifier's language detection
+                detected = self.clarifier._detect_language(msg.content)
+                if detected != "English":
+                    return detected
+
+        return "English"
 
     async def _handle_clarifying(
         self,
@@ -217,13 +299,14 @@ class DialogueManager:
         intent: IntentResult
     ) -> DialogueResponse:
         """Handle messages during clarification phase."""
+        language = self._detect_language_from_context(context)
 
         # User wants to cancel
         if intent.intent == UserIntent.CANCEL:
             context.pending_clarification = None
             context.transition_to(DialogueState.IDLE)
             return DialogueResponse(
-                message="No problem. What else would you like to research?",
+                message=self._get_localized_message("cancel_research", language),
                 state=DialogueState.IDLE
             )
 
@@ -252,6 +335,7 @@ class DialogueManager:
         intent: IntentResult
     ) -> DialogueResponse:
         """Handle messages when reviewing a plan."""
+        language = self._detect_language_from_context(context)
 
         if intent.intent == UserIntent.CONFIRM:
             return await self._execute_plan(context)
@@ -260,7 +344,7 @@ class DialogueManager:
             context.clear_pending_plan()
             context.transition_to(DialogueState.IDLE)
             return DialogueResponse(
-                message="Cancelled. What else would you like to research?",
+                message=self._get_localized_message("plan_cancelled", language),
                 state=DialogueState.IDLE
             )
 
@@ -271,7 +355,7 @@ class DialogueManager:
             return await self._analyze_and_maybe_clarify(context, intent.original_message)
 
         return DialogueResponse(
-            message="Say 'ok' to proceed, 'cancel' to stop, or describe changes.",
+            message=self._get_localized_message("proceed_or_edit", language),
             state=DialogueState.REVIEWING,
             plan=context.pending_plan
         )
@@ -282,8 +366,9 @@ class DialogueManager:
         intent: IntentResult
     ) -> DialogueResponse:
         """Handle messages while executing."""
+        language = self._detect_language_from_context(context)
         return DialogueResponse(
-            message="Still working on the research...",
+            message=self._get_localized_message("still_working", language),
             state=DialogueState.EXECUTING,
             needs_input=False
         )
@@ -298,6 +383,9 @@ class DialogueManager:
         if intent.intent == UserIntent.NEW_TOPIC:
             return await self._analyze_and_maybe_clarify(context, intent.original_message)
 
+        if intent.intent == UserIntent.CHAT:
+            return await self._handle_chat(context, intent)
+
         return DialogueResponse(
             message=context.result_summary or "Research complete. Start a new topic?",
             state=DialogueState.COMPLETE
@@ -309,13 +397,66 @@ class DialogueManager:
         intent: IntentResult
     ) -> DialogueResponse:
         """Handle messages after an error."""
+        language = self._detect_language_from_context(context)
+
         if intent.intent == UserIntent.NEW_TOPIC:
             return await self._analyze_and_maybe_clarify(context, intent.original_message)
 
+        if intent.intent == UserIntent.CHAT:
+            return await self._handle_chat(context, intent)
+
         context.transition_to(DialogueState.IDLE)
         return DialogueResponse(
-            message="Let's try again. What would you like to research?",
+            message=self._get_localized_message("try_again", language),
             state=DialogueState.IDLE
+        )
+
+    async def _handle_chat(
+        self,
+        context: ConversationContext,
+        intent: IntentResult
+    ) -> DialogueResponse:
+        """Handle casual conversation - greetings, questions about the agent, etc."""
+        language = self._detect_language_from_context(context)
+        message = intent.original_message
+
+        if self.llm:
+            try:
+                prompt = f"""You are a friendly research assistant. The user is chatting casually with you.
+
+User's message: "{message}"
+
+Respond naturally and conversationally in {language}. Keep it brief (1-3 sentences).
+
+Guidelines:
+- If they greet you, greet back warmly and ask what topic they'd like to research
+- If they ask your name, say you're a research assistant (trợ lý nghiên cứu) - you don't have a personal name
+- If they ask what you can do, briefly explain: you help find and analyze academic papers on any topic
+- If they thank you, respond naturally
+- If it's unclear, gently guide them to tell you a research topic
+- Be natural and friendly, like a colleague
+- ALWAYS respond in {language}"""
+
+                response = await self.llm.generate(prompt)
+                return DialogueResponse(
+                    message=response.strip(),
+                    state=context.state
+                )
+            except Exception as e:
+                logger.warning(f"Chat LLM failed: {e}")
+
+        # Fallback without LLM
+        fallback = {
+            "English": "Hi! I'm a research assistant. Tell me a topic and I'll help you find and analyze papers on it.",
+            "Vietnamese": "Chào bạn! Tôi là trợ lý nghiên cứu. Hãy cho tôi biết chủ đề bạn muốn tìm hiểu, tôi sẽ giúp bạn tìm và phân tích các bài báo khoa học.",
+            "Spanish": "¡Hola! Soy un asistente de investigación. Dime un tema y te ayudaré a encontrar y analizar artículos.",
+            "French": "Bonjour! Je suis un assistant de recherche. Dites-moi un sujet et je vous aiderai à trouver des articles.",
+            "German": "Hallo! Ich bin ein Forschungsassistent. Nennen Sie mir ein Thema und ich helfe Ihnen, Artikel zu finden."
+        }
+
+        return DialogueResponse(
+            message=fallback.get(language, fallback["English"]),
+            state=context.state
         )
 
     async def _analyze_and_maybe_clarify(
@@ -361,11 +502,21 @@ class DialogueManager:
 
             # Add memory hints if available
             if memory_context.similar_sessions:
-                message += "\n\n**From your history:**"
+                if clarification.detected_language == "Vietnamese":
+                    message += "\n\nTừ lịch sử của bạn:"
+                elif clarification.detected_language == "Spanish":
+                    message += "\n\nDe tu historial:"
+                elif clarification.detected_language == "French":
+                    message += "\n\nDe votre historique:"
+                elif clarification.detected_language == "German":
+                    message += "\n\nAus Ihrer Historie:"
+                else:
+                    message += "\n\nFrom your history:"
+
                 for session in memory_context.similar_sessions[:2]:
                     message += f"\n  - {session}"
 
-            message += "\n\n(Or say 'ok' to proceed with my understanding)"
+            message += "\n\n" + self._get_localized_message("proceed_with_understanding", clarification.detected_language)
 
             return DialogueResponse(
                 message=message,
@@ -414,6 +565,11 @@ class DialogueManager:
             # Build request with memory hints
             request = ResearchRequest(topic=topic)
 
+            # Add user-provided URLs extracted from messages
+            if context.pending_urls:
+                request.sources = list(set(context.pending_urls))
+                context.pending_urls = []  # Clear after use
+
             # Enrich request with memory context if available
             if memory_context:
                 # Add preferred sources if user has history
@@ -447,9 +603,11 @@ class DialogueManager:
 
     async def _execute_plan(self, context: ConversationContext) -> DialogueResponse:
         """Execute the approved plan and record to memory."""
+        language = self._detect_language_from_context(context)
+
         if not context.pending_plan or not context.current_request:
             return DialogueResponse(
-                message="No plan to execute. What would you like to research?",
+                message=self._get_localized_message("no_plan", language),
                 state=DialogueState.IDLE
             )
 

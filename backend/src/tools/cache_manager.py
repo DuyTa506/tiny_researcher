@@ -43,8 +43,7 @@ class ToolCacheManager:
 
     # TTL configuration per tool (in seconds)
     TTL_CONFIG: Dict[str, int] = {
-        "arxiv_search": 3600,           # 1 hour
-        "arxiv_search_keywords": 3600,  # 1 hour
+        "search": 3600,                 # 1 hour (unified search)
         "hf_trending": 1800,            # 30 minutes
         "collect_url": 86400,           # 24 hours
         "default": 3600,                # 1 hour

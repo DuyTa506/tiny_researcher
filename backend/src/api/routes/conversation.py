@@ -139,6 +139,17 @@ class MessageResponse(BaseModel):
 
 # --- Endpoints ---
 
+@router.get("")
+async def list_conversations(
+    dialogue: DialogueManager = Depends(get_dialogue_manager)
+):
+    """List all active conversations."""
+    conversations = await dialogue.store.list_all()
+    # Sort by most recent first (if created_at available)
+    conversations.sort(key=lambda c: c.get("created_at", ""), reverse=True)
+    return {"items": conversations, "total": len(conversations)}
+
+
 @router.post("", response_model=ConversationResponse)
 async def start_conversation(
     request: StartConversationRequest,

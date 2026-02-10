@@ -1,0 +1,25 @@
+.container {
+    display: flex;
+    min-height: 100vh;
+}
+
+.main {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    padding-top: var(--header-height);
+}
+
+.content {
+    padding: var(--space-xl);
+    max-width: 1400px;
+}
+
+@media (max-width: 768px) {
+    .main {
+        margin-left: 0;
+    }
+
+    .content {
+        padding: var(--space-md);
+    }
+}

@@ -34,6 +34,13 @@ class PhaseConfig:
     _clustering: Optional[bool] = field(default=None, repr=False)
     _writing: Optional[bool] = field(default=None, repr=False)
 
+    # Citation-first workflow phases
+    _screening: Optional[bool] = field(default=None, repr=False)
+    _evidence_extraction: Optional[bool] = field(default=None, repr=False)
+    _claim_generation: Optional[bool] = field(default=None, repr=False)
+    _citation_audit: Optional[bool] = field(default=None, repr=False)
+    _gap_mining: Optional[bool] = field(default=None, repr=False)
+
     def __post_init__(self):
         if not self.active_phases:
             self.active_phases = [
@@ -91,6 +98,56 @@ class PhaseConfig:
     def writing(self, value: bool):
         self._writing = value
 
+    @property
+    def screening(self) -> bool:
+        if self._screening is not None:
+            return self._screening
+        return "screening" in self.active_phases
+
+    @screening.setter
+    def screening(self, value: bool):
+        self._screening = value
+
+    @property
+    def evidence_extraction(self) -> bool:
+        if self._evidence_extraction is not None:
+            return self._evidence_extraction
+        return "evidence_extraction" in self.active_phases
+
+    @evidence_extraction.setter
+    def evidence_extraction(self, value: bool):
+        self._evidence_extraction = value
+
+    @property
+    def claim_generation(self) -> bool:
+        if self._claim_generation is not None:
+            return self._claim_generation
+        return "claim_generation" in self.active_phases
+
+    @claim_generation.setter
+    def claim_generation(self, value: bool):
+        self._claim_generation = value
+
+    @property
+    def citation_audit(self) -> bool:
+        if self._citation_audit is not None:
+            return self._citation_audit
+        return "citation_audit" in self.active_phases
+
+    @citation_audit.setter
+    def citation_audit(self, value: bool):
+        self._citation_audit = value
+
+    @property
+    def gap_mining(self) -> bool:
+        if self._gap_mining is not None:
+            return self._gap_mining
+        return "gap_mining" in self.active_phases
+
+    @gap_mining.setter
+    def gap_mining(self, value: bool):
+        self._gap_mining = value
+
 
 @dataclass
 class AdaptivePlan:
@@ -132,12 +189,23 @@ PHASE_TEMPLATES = {
     ),
     QueryType.FULL: PhaseConfig(
         active_phases=[
-            "planning", "execution", "persistence", "analysis",
-            "pdf_loading", "summarization", "clustering", "writing"
+            "planning", "execution", "persistence", "screening",
+            "pdf_loading", "evidence_extraction", "clustering",
+            "claim_generation", "gap_mining", "writing",
+            "citation_audit", "publish"
         ],
         skip_synthesis=False
     )
 }
+
+# Legacy template for backward compatibility
+LEGACY_PHASE_TEMPLATE = PhaseConfig(
+    active_phases=[
+        "planning", "execution", "persistence", "analysis",
+        "pdf_loading", "summarization", "clustering", "writing"
+    ],
+    skip_synthesis=False
+)
 
 
 class AdaptivePlannerService:

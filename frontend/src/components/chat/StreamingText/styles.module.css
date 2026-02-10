@@ -1,0 +1,48 @@
+.wrapper {
+    line-height: 1.65;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.wrapper p {
+    margin: 0 0 0.5em;
+}
+
+.wrapper p:last-child {
+    margin-bottom: 0;
+}
+
+.wrapper ul,
+.wrapper ol {
+    padding-left: 1.2em;
+    margin: 0.3em 0;
+}
+
+.wrapper code {
+    background: var(--bg-secondary);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 0.85em;
+}
+
+.cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    background: var(--primary);
+    margin-left: 1px;
+    animation: blink 0.8s ease-in-out infinite;
+    vertical-align: text-bottom;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}

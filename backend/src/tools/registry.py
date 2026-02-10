@@ -151,11 +151,20 @@ def get_tools_for_llm() -> List[Dict[str, Any]]:
 
 def get_tools_description() -> str:
     """
-    Get human-readable description of all tools.
-    Used for including in prompts.
+    Get structured description of all tools for planner prompts.
+    Includes parameter schema so LLM knows valid args.
     """
     lines = ["Available tools:"]
     for tool in TOOL_REGISTRY.values():
-        params = ", ".join(tool.parameters.get("required", []))
-        lines.append(f"  - {tool.name}({params}): {tool.description}")
+        props = tool.parameters.get("properties", {})
+        required = tool.parameters.get("required", [])
+        params_desc = []
+        for pname, pinfo in props.items():
+            ptype = pinfo.get("type", "any")
+            req = " (required)" if pname in required else ""
+            params_desc.append(f"{pname}: {ptype}{req}")
+        params_str = ", ".join(params_desc) if params_desc else "no parameters"
+        lines.append(f"  - name: \"{tool.name}\"")
+        lines.append(f"    description: {tool.description}")
+        lines.append(f"    parameters: {{{params_str}}}")
     return "\n".join(lines)

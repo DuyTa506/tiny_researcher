@@ -6,8 +6,8 @@ Import this module to register all built-in tools.
 """
 
 # Import tool modules to trigger registration
-from src.tools.builtin import arxiv
+from src.tools.builtin import search
 from src.tools.builtin import huggingface
 from src.tools.builtin import collector
 
-__all__ = ["arxiv", "huggingface", "collector"]
+__all__ = ["search", "huggingface", "collector"]

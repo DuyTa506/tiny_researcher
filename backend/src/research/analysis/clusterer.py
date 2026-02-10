@@ -29,7 +29,7 @@ class ClustererService:
         self.llm = llm_client
         self.vector_service = vector_service
 
-    async def cluster_papers(self, papers: List[Paper]) -> List[Cluster]:
+    async def cluster_papers(self, papers: List[Paper], language: str = "en") -> List[Cluster]:
         """
         Group papers into clusters and name them.
         """
@@ -74,14 +74,14 @@ class ClustererService:
         results = []
         for label, indices in clusters_map.items():
             cluster_papers = [papers[i] for i in indices]
-            name, desc = await self._generate_cluster_label(cluster_papers)
+            name, desc = await self._generate_cluster_label(cluster_papers, language)
             results.append(Cluster(id=int(label), name=name, paper_indices=indices, description=desc))
             
         return results
 
-    async def _generate_cluster_label(self, papers: List[Paper]) -> (str, str):
+    async def _generate_cluster_label(self, papers: List[Paper], language: str = "en") -> (str, str):
         titles = "\n".join([f"- {p.title}" for p in papers])
-        prompt = PromptManager.get_prompt("CLUSTERER_LABELING", titles=titles)
+        prompt = PromptManager.get_prompt("CLUSTERER_LABELING", titles=titles, language=language)
         try:
             response_text = await self.llm.generate(prompt, json_mode=True)
             if "Mock" in response_text:

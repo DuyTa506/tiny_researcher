@@ -168,9 +168,14 @@ class ResearchCLI:
 
         # Generate filename from topic
         topic = result.topic if hasattr(result, 'topic') else "research"
-        # Clean topic for filename
-        safe_topic = re.sub(r'[^\w\s-]', '', topic)[:50].strip()
-        safe_topic = re.sub(r'[-\s]+', '_', safe_topic)
+
+        # Extract English terms for filename (strip non-ASCII characters)
+        # This handles Vietnamese/Chinese input by keeping only ASCII words
+        ascii_words = re.findall(r'[a-zA-Z][a-zA-Z0-9-]+', topic)
+        if ascii_words:
+            safe_topic = "_".join(ascii_words)[:60]
+        else:
+            safe_topic = "research_report"
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{safe_topic}_{timestamp}.md"

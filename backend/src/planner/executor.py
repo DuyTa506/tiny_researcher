@@ -128,13 +128,14 @@ class ExecutionProgress:
 
 class PaperDeduplicator:
     """Multi-level paper deduplication."""
-    
+
     def __init__(self, title_similarity_threshold: float = 0.85):
         self.seen_arxiv_ids: Set[str] = set()
+        self.seen_dois: Set[str] = set()
         self.seen_fingerprints: Set[str] = set()
         self.seen_titles: List[str] = []
         self.title_similarity_threshold = title_similarity_threshold
-    
+
     def create_fingerprint(self, paper: dict) -> str:
         """Create fingerprint from title + first author."""
         title = paper.get("title", "").lower().strip()
@@ -142,7 +143,7 @@ class PaperDeduplicator:
         first_author = authors[0].lower() if authors else ""
         content = f"{title}|{first_author}"
         return hashlib.md5(content.encode()).hexdigest()
-    
+
     def is_duplicate(self, paper: dict) -> bool:
         """Check if paper is a duplicate using multi-level strategy."""
         # Level 1: ArXiv ID
@@ -151,19 +152,27 @@ class PaperDeduplicator:
             if arxiv_id in self.seen_arxiv_ids:
                 return True
             self.seen_arxiv_ids.add(arxiv_id)
-        
+
+        # Level 1b: DOI
+        doi = paper.get("doi")
+        if doi:
+            doi_normalized = doi.lower().strip()
+            if doi_normalized in self.seen_dois:
+                return True
+            self.seen_dois.add(doi_normalized)
+
         # Level 2: Fingerprint (title + author hash)
         fingerprint = self.create_fingerprint(paper)
         if fingerprint in self.seen_fingerprints:
             return True
         self.seen_fingerprints.add(fingerprint)
-        
+
         # Level 3: Title similarity (fuzzy)
         title = paper.get("title", "").lower().strip()
         if title and self._is_similar_title(title):
             return True
         self.seen_titles.append(title)
-        
+
         return False
     
     def _is_similar_title(self, title: str) -> bool:
@@ -195,6 +204,7 @@ class PaperDeduplicator:
     def reset(self):
         """Reset deduplication state."""
         self.seen_arxiv_ids.clear()
+        self.seen_dois.clear()
         self.seen_fingerprints.clear()
         self.seen_titles.clear()
 
@@ -286,7 +296,7 @@ class PlanExecutor:
             status=StepStatus.RUNNING,
             started_at=datetime.now()
         )
-        
+
         try:
             if step.tool:
                 result.tool_used = step.tool
@@ -310,51 +320,51 @@ class PlanExecutor:
                     raw_results = await execute_tool(step.tool, **step.tool_args)
 
                     # Cache the result
-                    if self.cache_manager:
+                    if self.cache_manager and raw_results is not None:
                         await self.cache_manager.set(step.tool, raw_results, **step.tool_args)
 
                 # Normalize to list
                 if not isinstance(raw_results, list):
-                    raw_results = [raw_results]
-                
+                    raw_results = [raw_results] if raw_results else []
+
                 # Deduplicate immediately
                 unique_papers, duplicates = self._deduplicator.deduplicate(raw_results)
-                
+
                 # Add plan_id and step_id to each paper
                 for paper in unique_papers:
                     paper["plan_id"] = self.plan_id
                     paper["step_id"] = step.id
-                
+
                 result.results = unique_papers
                 result.unique_count = len(unique_papers)
                 result.duplicates_removed = duplicates
                 result.status = StepStatus.COMPLETED
-                
+
             elif step.action in ("analyze", "synthesize"):
                 logger.info(f"Step {step.id} ({step.action}) - handled by analysis pipeline")
                 result.status = StepStatus.SKIPPED
             else:
                 logger.warning(f"Step {step.id} has no tool assigned")
                 result.status = StepStatus.SKIPPED
-                
+
         except ToolNotFoundError as e:
             logger.error(f"Tool not found: {e.tool_name}")
             result.status = StepStatus.FAILED
             result.error = f"Tool not found: {e.tool_name}"
-            
+
         except ToolExecutionError as e:
             logger.error(f"Tool execution failed: {e}")
             result.status = StepStatus.FAILED
             result.error = str(e.original_error)
-            
+
         except Exception as e:
             logger.error(f"Unexpected error in step {step.id}: {e}", exc_info=True)
             result.status = StepStatus.FAILED
             result.error = str(e)
-        
+
         finally:
             result.completed_at = datetime.now()
-        
+
         return result
     
     @property

@@ -84,6 +84,10 @@ class ResearchRequest(BaseModel):
     min_papers: Optional[int] = Field(None, description="Minimum number of papers to collect.")
     max_papers: Optional[int] = Field(None, description="Maximum number of papers to collect.")
 
+    # --- OPTIONAL (Citation-first workflow budgets) ---
+    max_pdf_download: int = Field(20, description="Max papers to download PDFs for.")
+    token_budget: Optional[int] = Field(None, description="Max estimated tokens for LLM calls.")
+
 class ResearchStep(BaseModel):
     """
     A single step in the research plan.
@@ -101,6 +105,7 @@ class ResearchStep(BaseModel):
     sources: List[str] = Field(default_factory=list, description="Specific sources to use")
     tool: Optional[str] = Field(None, description="Tool to execute (from registry)")
     tool_args: dict = Field(default_factory=dict, description="Arguments for tool execution")
+    expected_output: Optional[str] = Field(None, description="What this step produces: list_papers, study_cards, taxonomy, report, analysis")
     completed: bool = Field(False, description="Whether this step has been executed")
 
 

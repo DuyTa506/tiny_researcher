@@ -48,9 +48,10 @@ class PlannerService:
         tools_context = get_tools_description()
         
         prompt = PromptManager.get_prompt(
-            "PLANNER_RESEARCH_PLAN", 
+            "PLANNER_RESEARCH_PLAN",
             topic=topic,
-            available_tools=tools_context
+            available_tools=tools_context,
+            language=request.output_config.language if request.output_config else "en"
         )
         
         # Add user hints to prompt if provided
@@ -63,7 +64,17 @@ class PlannerService:
             
             # Parse LLM-generated steps
             steps = []
+            valid_tool_names = set(TOOL_REGISTRY.keys())
             for step_data in data.get("steps", []):
+                # Validate tool name against registry
+                tool_name = step_data.get("tool")
+                if tool_name and tool_name not in valid_tool_names:
+                    logger.warning(
+                        f"Plan step '{step_data.get('title', '?')}' references "
+                        f"unknown tool '{tool_name}', setting to null"
+                    )
+                    tool_name = None
+
                 step = ResearchStep(
                     id=step_data.get("id", len(steps) + 1),
                     action=step_data.get("action", "research"),
@@ -71,8 +82,9 @@ class PlannerService:
                     description=step_data.get("description", ""),
                     queries=step_data.get("queries", []),
                     sources=step_data.get("sources", []),
-                    tool=step_data.get("tool"),
-                    tool_args=step_data.get("tool_args", {}),
+                    tool=tool_name,
+                    tool_args=step_data.get("tool_args", {}) if tool_name else {},
+                    expected_output=step_data.get("expected_output"),
                     completed=False
                 )
                 steps.append(step)
@@ -194,11 +206,11 @@ class PlannerService:
             title="Initial Research",
             description=f"Search for papers and resources about {topic}",
             queries=unique_queries,
-            tool="arxiv_search",
+            tool="search",
             tool_args={"query": topic, "max_results": 30},
             completed=False
         ))
-        
+
         # Step 2: Answer questions (if provided)
         if request.research_questions:
             steps.append(ResearchStep(
@@ -207,8 +219,8 @@ class PlannerService:
                 title="Answer Research Questions",
                 description="Find specific answers to user's questions",
                 queries=request.research_questions,
-                tool="arxiv_search_keywords",
-                tool_args={"keywords": request.research_questions[:5], "max_results": 20},
+                tool="search",
+                tool_args={"query": " ".join(request.research_questions[:3]), "max_results": 20},
                 completed=False
             ))
         

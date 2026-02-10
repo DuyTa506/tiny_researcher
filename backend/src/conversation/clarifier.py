@@ -31,6 +31,7 @@ class ClarificationResult:
     understanding: str = ""  # Agent's interpretation
     sub_queries: List[str] = field(default_factory=list)  # Decomposed queries
     original_query: str = ""
+    detected_language: str = "English"  # Detected user language
 
 
 # Compound query indicators
@@ -157,42 +158,90 @@ class QueryClarifier:
             original_query=query
         )
 
+    def _detect_language(self, query: str) -> str:
+        """Detect language from query text using word boundary matching."""
+        query_lower = query.lower()
+
+        # Split into words for word-boundary matching
+        words = query_lower.split()
+
+        # Vietnamese indicators (common words that are unique to Vietnamese)
+        vietnamese_words = ['chào', 'tôi', 'cho', 'tìm', 'về', 'có', 'là', 'của', 'và', 'được', 'này', 'đó', 'muốn', 'bạn', 'nghiên', 'cứu']
+        vietnamese_count = sum(1 for word in vietnamese_words if word in words)
+        if vietnamese_count >= 2:  # Require at least 2 Vietnamese words
+            return "Vietnamese"
+
+        # Spanish indicators
+        spanish_words = ['hola', 'buscar', 'encontrar', 'sobre', 'investigación', 'qué', 'cómo', 'dónde']
+        spanish_count = sum(1 for word in spanish_words if word in words)
+        if spanish_count >= 2:
+            return "Spanish"
+
+        # French indicators (excluding common words like "me", "pour")
+        french_words = ['bonjour', 'chercher', 'trouver', 'recherche', 'recherches', 'où']
+        french_count = sum(1 for word in french_words if word in words)
+        if french_count >= 2:
+            return "French"
+
+        # German indicators
+        german_words = ['hallo', 'suchen', 'finden', 'über', 'forschung']
+        german_count = sum(1 for word in german_words if word in words)
+        if german_count >= 2:
+            return "German"
+
+        # Default to English
+        return "English"
+
     async def _analyze_with_llm(
         self,
         query: str,
         complexity: QueryComplexity
     ) -> ClarificationResult:
         """LLM-based smart analysis."""
-        prompt = f"""You are a research assistant. Analyze this query and think like a researcher.
+        # Detect user's language
+        detected_language = self._detect_language(query)
 
-Query: "{query}"
+        prompt = f"""You are a friendly research assistant having a natural conversation with a user.
 
-Think step by step:
+User's query: "{query}"
+
+The user is speaking in {detected_language}. You MUST respond in {detected_language} in a natural, conversational way.
+
+Think like a researcher:
 1. What is the user really trying to achieve?
 2. Is anything unclear or ambiguous?
 3. What clarifying questions would help?
 
-Respond in this format (keep it short):
-UNDERSTANDING: [Your interpretation in 1 sentence]
+Respond in this format (all text in {detected_language}):
+UNDERSTANDING: [Your interpretation in 1 sentence - natural tone, not robotic]
 SUBQUERIES: [If compound, list sub-objectives separated by |, otherwise "none"]
-QUESTIONS: [1-2 clarifying questions separated by |, or "none" if query is clear]
+QUESTIONS: [1-2 clarifying questions separated by |, or "none" if query is clear - ask naturally like a colleague]
+
+Important tone guidelines:
+- Be conversational and friendly, not formal or robotic
+- Use natural language like you're talking to a colleague
+- Don't use templates like "I understand that..." - just state your understanding naturally
+- Ask questions conversationally, not in a checklist format
 
 Examples:
-- For "find attention-free methods and adapt to linear transformers":
-  UNDERSTANDING: User wants to find attention-free architectures and evaluate their adaptability to linear transformers
-  SUBQUERIES: attention-free methods/architectures | linear transformer adaptation
-  QUESTIONS: Are you looking for existing work or exploring new research directions? | What's your use case - NLP, vision, or general?
 
-- For "BERT paper":
-  UNDERSTANDING: User wants to find the BERT paper
+English query "find attention-free methods and adapt to linear transformers":
+  UNDERSTANDING: You want to explore attention-free architectures and see how they could work with linear transformers
+  SUBQUERIES: attention-free methods | linear transformer adaptation
+  QUESTIONS: Are you looking at existing work or thinking about new directions? | What domain are you targeting - language, vision, or something else?
+
+Vietnamese query "cho tôi một vài nghiên cứu mới nhất về vision transformers":
+  UNDERSTANDING: Bạn muốn tìm các nghiên cứu gần đây về vision transformers
   SUBQUERIES: none
-  QUESTIONS: none
+  QUESTIONS: Bạn quan tâm đến ứng dụng cụ thể nào không - phân loại ảnh, phát hiện đối tượng, hay tổng quát? | Bạn muốn so sánh với CNN hay chỉ tìm hiểu ViT thôi?
 
-Now analyze the query:"""
+Now analyze the query (remember to respond in {detected_language}):"""
 
         try:
             response = await self.llm.generate(prompt)
-            return self._parse_llm_response(response, query, complexity)
+            result = self._parse_llm_response(response, query, complexity)
+            result.detected_language = detected_language  # Store detected language
+            return result
         except Exception as e:
             logger.warning(f"LLM analysis failed: {e}")
             return self._analyze_with_rules(query, complexity)
@@ -231,24 +280,33 @@ Now analyze the query:"""
         )
 
     def format_clarification_message(self, result: ClarificationResult) -> str:
-        """Format clarification result as a user-friendly message."""
+        """Format clarification result as a natural, conversational message."""
         lines = []
 
-        # Show understanding
-        lines.append(f"**My understanding:** {result.understanding}")
-        lines.append("")
+        # Show understanding naturally
+        lines.append(result.understanding)
 
-        # Show sub-queries if compound
+        # Show sub-queries if compound (more natural format)
         if result.sub_queries:
-            lines.append("**I see these objectives:**")
-            for i, sq in enumerate(result.sub_queries, 1):
-                lines.append(f"  {i}. {sq}")
             lines.append("")
+            if result.detected_language == "Vietnamese":
+                lines.append("Tôi thấy bạn muốn tìm hiểu về:")
+            elif result.detected_language == "Spanish":
+                lines.append("Veo que quieres investigar:")
+            elif result.detected_language == "French":
+                lines.append("Je vois que vous voulez rechercher:")
+            elif result.detected_language == "German":
+                lines.append("Ich sehe, Sie möchten recherchieren:")
+            else:
+                lines.append("I see you want to look into:")
 
-        # Ask questions
+            for i, sq in enumerate(result.sub_queries, 1):
+                lines.append(f"{i}. {sq}")
+
+        # Ask questions naturally
         if result.questions:
-            lines.append("**Before I search, can you clarify:**")
+            lines.append("")
             for q in result.questions:
-                lines.append(f"  - {q}")
+                lines.append(q)
 
         return "\n".join(lines)

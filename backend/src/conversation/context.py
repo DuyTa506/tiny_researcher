@@ -95,6 +95,9 @@ class ConversationContext:
     # Clarification context (for CLARIFYING state)
     pending_clarification: Optional[dict] = None  # Stores ClarificationResult as dict
 
+    # User-provided URLs extracted from messages
+    pending_urls: List[str] = field(default_factory=list)
+
     # Results after execution
     result_summary: Optional[str] = None
 
@@ -256,3 +259,24 @@ class ConversationStore:
         """Extend the TTL of a conversation."""
         if self.redis:
             await self.redis.expire(self._key(conversation_id), self.CONVERSATION_TTL)
+
+    async def list_all(self) -> list:
+        """List all active conversation IDs and basic metadata."""
+        if not self.redis:
+            return []
+
+        conversations = []
+        async for key in self.redis.scan_iter(match="conversation:*"):
+            conv_id = key.replace("conversation:", "")
+            data = await self.redis.get(key)
+            if data:
+                parsed = json.loads(data)
+                conversations.append({
+                    "conversation_id": conv_id,
+                    "state": parsed.get("state", "unknown"),
+                    "current_topic": parsed.get("current_topic"),
+                    "created_at": parsed.get("created_at"),
+                    "user_id": parsed.get("user_id"),
+                    "message_count": len(parsed.get("messages", [])),
+                })
+        return conversations

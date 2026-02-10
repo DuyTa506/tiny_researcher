@@ -12,7 +12,7 @@ class SummarizerService:
     def __init__(self, llm_client: LLMClientInterface):
         self.llm = llm_client
 
-    async def summarize_paper(self, paper: Paper) -> Dict[str, str]:
+    async def summarize_paper(self, paper: Paper, language: str = "en") -> Dict[str, str]:
         """
         Generate a structured summary for the paper.
         Returns a dictionary with keys: "problem", "method", "result", "one_sentence_summary".
@@ -24,7 +24,7 @@ class SummarizerService:
         if paper.full_text and len(paper.full_text) < 10000: # Simple truncation for context window
             text_to_summarize += "\n\n" + paper.full_text[:5000] # Take first 5k chars if full text exists
 
-        prompt = PromptManager.get_prompt("SUMMARIZER_PAPER", title=paper.title, content=text_to_summarize)
+        prompt = PromptManager.get_prompt("SUMMARIZER_PAPER", title=paper.title, content=text_to_summarize, language=language)
 
         try:
             response_text = await self.llm.generate(prompt, json_mode=True)

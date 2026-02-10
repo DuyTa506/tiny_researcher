@@ -1,4 +1,4 @@
-# System Design - Research Assistant (v3.3)
+# System Design - Research Assistant (v4.0 - Citation-First)
 
 ## Architecture Overview
 
@@ -12,7 +12,7 @@ graph TB
         DialogueMgr --> Clarifier[QueryClarifier]
     end
 
-    subgraph Core[Core Pipeline - v3.3]
+    subgraph Core[Core Pipeline - v4.0]
         DialogueMgr --> Planner[AdaptivePlannerService]
         Planner --> Executor[PlanExecutor + Cache]
         Executor --> Tools[Tool Registry]
@@ -27,25 +27,40 @@ graph TB
     end
 
     subgraph Storage[Storage Layer]
-        Dedup --> Repo[Repositories]
+        Dedup --> Repo[Repositories x8]
         Repo --> MongoDB[(MongoDB)]
         MemMgr --> Redis[(Redis)]
     end
 
-    subgraph Analysis[Analysis Pipeline]
-        MongoDB --> Analyzer[AnalyzerService]
-        Analyzer --> PDFLoader[PDFLoaderService]
-        PDFLoader --> Summarizer[SummarizerService]
-        Summarizer --> Clusterer[ClustererService]
-        Clusterer --> Writer[WriterService]
+    subgraph CitationFirst[Citation-First Pipeline]
+        MongoDB --> Screener[ScreenerService]
+        Screener --> Gates[ApprovalGateManager]
+        Gates --> PDFLoader[PDFLoaderService + Pages]
+        PDFLoader --> Extractor[EvidenceExtractorService]
+        Extractor --> Clusterer[ClustererService]
+        Clusterer --> Taxonomy[TaxonomyBuilder]
+        Taxonomy --> ClaimGen[ClaimGeneratorService]
+        ClaimGen --> GapMiner[GapMinerService]
+        GapMiner --> GWriter[GroundedWriterService]
+        GWriter --> Audit[CitationAuditService]
     end
 
-    Writer --> Report[Final Report]
+    subgraph Legacy[Legacy Pipeline]
+        MongoDB --> Analyzer[AnalyzerService]
+        Analyzer --> LPDFLoader[PDFLoaderService]
+        LPDFLoader --> Summarizer[SummarizerService]
+        Summarizer --> LClusterer[ClustererService]
+        LClusterer --> Writer[WriterService]
+    end
+
+    Audit --> Report[Grounded Report]
+    Writer --> LReport[Legacy Report]
 
     style Interface fill:#f3e5f5
     style Core fill:#e3f2fd
     style Memory fill:#fff3e0
-    style Analysis fill:#e8f5e9
+    style CitationFirst fill:#e8f5e9
+    style Legacy fill:#fafafa
 ```
 
 ## Technology Stack
@@ -61,7 +76,7 @@ graph TB
 | PDF Parser | pypdf | Latest |
 | Task Queue | Celery (future) | 5.3+ |
 
-## Key Components (Phase 1-4)
+## Key Components (Phase 1-6)
 
 ### 1. CLI Interface
 **File:** `src/cli/`
@@ -130,15 +145,104 @@ class LLMClientInterface(ABC):
 - MD5-based cache key generation
 - Hit/miss tracking
 
-**Cache Keys:**
-```
-tool_cache:arxiv_search:<md5(args)>
-tool_cache:hf_trending:<md5(args)>
-```
+---
+
+### 5. Screener Service (Citation-First)
+**File:** `src/research/analysis/screener.py`
+
+**Purpose:** Systematic paper screening with include/exclude decisions
+
+**Features:**
+- Batch LLM screening (batch size: 15)
+- Reason codes: relevant, out_of_scope, survey_only, missing_eval, duplicate_work, insufficient_detail
+- Graceful fallback: includes all papers on error
+- Returns (included_papers, screening_records) tuple
 
 ---
 
-### 2. Research Memory Manager
+### 6. Evidence Extractor (Citation-First)
+**File:** `src/research/analysis/evidence_extractor.py`
+
+**Purpose:** Extract structured evidence from paper full text
+
+**Features:**
+- Schema-driven extraction: problem, method, datasets, metrics, results, limitations
+- Each field backed by verbatim EvidenceSpan with locator
+- Locator resolution via pdf_loader for page/section/char positions
+- Falls back to abstract if no full text available
+
+---
+
+### 7. Claim Generator (Citation-First)
+**File:** `src/research/synthesis/claim_generator.py`
+
+**Purpose:** Generate atomic citable statements from evidence
+
+**Features:**
+- Generates 3-8 claims per theme cluster
+- Each claim requires ≥1 valid evidence_span_id
+- Salience scoring (0-1) and uncertainty flagging
+- Validates evidence span IDs against provided spans
+
+---
+
+### 8. Grounded Writer (Citation-First)
+**File:** `src/research/synthesis/grounded_writer.py`
+
+**Purpose:** Generate citation-grounded Markdown reports
+
+**Report sections:**
+1. Scope & Search Strategy
+2. Theme Map (cluster overview)
+3. Per-theme Synthesis (LLM-generated with inline citations)
+4. Comparative Table (datasets × metrics from taxonomy)
+5. Limitations (aggregated from study cards)
+6. Future Directions (from gap miner)
+7. References
+
+---
+
+### 9. Citation Audit (Citation-First)
+**File:** `src/research/synthesis/citation_audit.py`
+
+**Purpose:** Verify claims are properly supported by evidence
+
+**Process:**
+1. Select claims above salience threshold (0.3)
+2. LLM judge verifies evidence semantically supports claim
+3. Failed claims: auto-repair (conservative rewrite or mark uncertain)
+
+**Result:** AuditResult with pass_rate metric
+
+---
+
+### 10. Gap Miner (Citation-First)
+**File:** `src/research/synthesis/gap_miner.py`
+
+**Purpose:** Discover future research directions
+
+**Sources:**
+- Limitations from study cards
+- Taxonomy holes (empty cells in themes × datasets × metrics)
+- Contradictions (conflicting results on same dataset+metric)
+
+---
+
+### 11. Approval Gate Manager (HITL)
+**File:** `src/research/gates.py`
+
+**Purpose:** Human-in-the-loop approval for high-cost actions
+
+**Gate types:**
+- `pdf_download` - Triggered when > 15 papers need PDF download
+- `external_crawl` - Triggered for non-standard domains (not arxiv/hf)
+- `high_token_budget` - Triggered when estimated tokens > 100k
+
+**Behavior:** Auto-approves in development mode (no callback set)
+
+---
+
+### 12. Research Memory Manager
 **File:** `src/core/memory_manager.py`
 
 **Purpose:** Centralized session memory with multi-layer storage
@@ -148,69 +252,45 @@ tool_cache:hf_trending:<md5(args)>
 - **Warm Layer:** Redis (24h TTL, checkpoint/restore)
 - **Cold Layer:** MongoDB (permanent storage)
 
-**Features:**
-- Session lifecycle management
-- Phase transition tracking
-- Paper registry with deduplication
-- Checkpoint/restore at phase boundaries
-- Analysis context generation
-
-**Session States:**
-```
-IDLE → PLANNING → EXECUTION → ANALYSIS →
-SUMMARIZATION → CLUSTERING → WRITING → COMPLETE
-```
-
 ---
 
-### 3. PDF Loader Service
+### 13. PDF Loader Service
 **File:** `src/research/analysis/pdf_loader.py`
 
-**Purpose:** Selective full-text loading with caching
+**Purpose:** PDF loading with page mapping for citation-first workflow
 
-**Strategy:**
-- Only load PDFs for papers with `relevance_score >= 8.0`
-- Cache PDFs in Redis (7-day TTL)
-- Graceful fallback if download fails
+**Citation-first enhancements:**
+- `load_full_text_with_pages()` - Extracts text + per-page char offsets
+- `resolve_locator()` - Maps snippet to page/section/char position
+- SHA256 hash for content-level deduplication
+- Redis cache for page-mapped PDFs (`pdf_pages_cache:` prefix)
 
-**Benefits:**
-- ~80% bandwidth savings (only high-value papers)
-- Faster pipeline execution
-- Reduced LLM token costs
+**Legacy mode:** Selective loading for papers with `relevance_score >= 8.0`
 
 ---
 
-### 4. Enhanced Executor
-**File:** `src/planner/executor.py`
-
-**Enhancements:**
-- Integrated cache manager
-- Enhanced `ExecutionProgress` metrics:
-  - Cache hit rate
-  - Average step duration
-  - Relevance bands (3-5, 6-7, 8-10)
-  - High-relevance paper count
-
----
-
-### 5. Complete Pipeline
+### 14. Complete Pipeline
 **File:** `src/research/pipeline.py`
 
-**8-Phase Workflow:**
+**Citation-First Workflow (10+ phases):**
 
-1. **Planning** - Generate research plan from topic
-2. **Execution** - Collect papers (cache-aware)
+1. **Planning** - Generate research plan (adaptive QUICK/FULL)
+2. **Collection** - Collect papers (cache-aware) + deduplication
 3. **Persistence** - Save to MongoDB
-4. **Analysis** - Score relevance (abstract-only)
-5. **PDF Loading** - Load full text (score >= 8)
-6. **Summarization** - Generate structured summaries
-7. **Clustering** - Group by semantic theme
-8. **Writing** - Generate Markdown report
+4. **Screening** - Systematic include/exclude via ScreenerService
+5. **HITL Gate** - Approval for PDF downloads
+6. **PDF Loading** - Full text with page mapping
+7. **Evidence Extraction** - StudyCards + EvidenceSpans
+8. **Clustering** - Theme grouping
+9. **Synthesis** - Taxonomy → Claims → Gaps → Grounded report
+10. **Citation Audit** - LLM judge + auto-repair
+11. **Publish** - Save final report
 
-**Integration:**
-- ResearchMemoryManager for session tracking
-- ToolCacheManager for performance
-- Checkpoints at each major phase
+**Legacy Workflow (8 phases):**
+Activated with `use_citation_workflow=False`
+
+1. Planning → 2. Execution → 3. Persistence → 4. Analysis →
+5. PDF Loading → 6. Summarization → 7. Clustering → 8. Writing
 
 ---
 
@@ -218,10 +298,14 @@ SUMMARIZATION → CLUSTERING → WRITING → COMPLETE
 
 | Collection | Description | Key Fields |
 |------------|-------------|------------|
-| papers | Research papers | arxiv_id, title, abstract, full_text, relevance_score, summary |
+| papers | Research papers | arxiv_id, title, abstract, full_text, relevance_score, summary, page_map, pdf_hash, status |
 | clusters | Paper groupings | name, description, paper_ids |
 | reports | Generated reports | content, metadata, session_id |
 | plans | Research plans | topic, steps, status |
+| screening_records | Include/exclude decisions | paper_id, include, reason_code, rationale_short, scored_relevance |
+| evidence_spans | Verbatim snippets with locators | paper_id, field, snippet, locator, confidence, source_url |
+| study_cards | Schema-driven paper extractions | paper_id, problem, method, datasets, metrics, results, limitations, evidence_span_ids |
+| claims | Atomic citable statements | claim_text, evidence_span_ids, theme_id, salience_score, uncertainty_flag |
 
 ---
 
@@ -235,7 +319,8 @@ TTL: 1h-24h (per tool)
 
 ### PDF Cache
 ```
-pdf_cache:{pdf_url}
+pdf_cache:{pdf_url}                  # Plain text (legacy)
+pdf_pages_cache:{pdf_url}            # Text + page map (citation-first)
 TTL: 7 days
 ```
 
