@@ -1,0 +1,519 @@
+{
+  "repo": "research_assistant",
+  "languages": [
+    "JavaScript/TypeScript",
+    "Python"
+  ],
+  "entrypoints": [
+    "backend\\src\\api\\main.py",
+    "backend\\src\\cli\\app.py",
+    "backend\\venv\\Lib\\site-packages\\annotated_doc\\main.py",
+    "backend\\venv\\Lib\\site-packages\\certifi\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\distro\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\dotenv\\main.py",
+    "backend\\venv\\Lib\\site-packages\\dotenv\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\fastapi\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\numpy\\f2py\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\openai\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\pip\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\pip\\_internal\\main.py",
+    "backend\\venv\\Lib\\site-packages\\pip\\_internal\\cli\\main.py",
+    "backend\\venv\\Lib\\site-packages\\pip\\_vendor\\certifi\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\pip\\_vendor\\distro\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\pip\\_vendor\\platformdirs\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\pip\\_vendor\\pygments\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\pip\\_vendor\\rich\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\playwright\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\playwright\\driver\\package\\index.js",
+    "backend\\venv\\Lib\\site-packages\\playwright\\driver\\package\\lib\\mcpBundleImpl\\index.js",
+    "backend\\venv\\Lib\\site-packages\\playwright\\driver\\package\\lib\\server\\index.js",
+    "backend\\venv\\Lib\\site-packages\\playwright\\driver\\package\\lib\\server\\registry\\index.js",
+    "backend\\venv\\Lib\\site-packages\\playwright\\driver\\package\\lib\\utilsBundleImpl\\index.js",
+    "backend\\venv\\Lib\\site-packages\\portalocker\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\pydantic\\main.py",
+    "backend\\venv\\Lib\\site-packages\\pydantic\\v1\\main.py",
+    "backend\\venv\\Lib\\site-packages\\pydantic_settings\\main.py",
+    "backend\\venv\\Lib\\site-packages\\pymongo\\asynchronous\\server.py",
+    "backend\\venv\\Lib\\site-packages\\pymongo\\synchronous\\server.py",
+    "backend\\venv\\Lib\\site-packages\\pythonwin\\pywin\\framework\\app.py",
+    "backend\\venv\\Lib\\site-packages\\scipy\\_lib\\cobyqa\\main.py",
+    "backend\\venv\\Lib\\site-packages\\torch\\utils\\model_dump\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\torch\\_inductor\\compile_worker\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\tqdm\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\typer\\main.py",
+    "backend\\venv\\Lib\\site-packages\\typer\\__main__.py",
+    "backend\\venv\\Lib\\site-packages\\uvicorn\\main.py",
+    "backend\\venv\\Lib\\site-packages\\uvicorn\\server.py",
+    "backend\\venv\\Lib\\site-packages\\uvicorn\\__main__.py"
+  ],
+  "commands": [],
+  "top_dirs": [
+    ".agent",
+    ".claude",
+    "FE",
+    "backend",
+    "frontend",
+    "nginx",
+    "services"
+  ],
+  "tech_stack": [
+    "JavaScript/TypeScript",
+    "Python"
+  ],
+  "symbol_count": 0,
+  "module_scores": {
+    "ui-app": {
+      "score": 20,
+      "threshold": 60,
+      "candidate_threshold": 40,
+      "status": "excluded",
+      "confidence": "low",
+      "evidence": [
+        {
+          "type": "content_regex",
+          "pattern": "reactdom|createapp|createRoot",
+          "weight": 20,
+          "matches": [
+            ".agent\\skills\\codewiki-generator\\references\\evidence-rules.json",
+            "backend\\venv\\Lib\\site-packages\\playwright\\driver\\package\\lib\\server\\instrumentation.js",
+            "backend\\venv\\Lib\\site-packages\\playwright\\driver\\package\\lib\\server\\playwright.js",
+            "backend\\venv\\Lib\\site-packages\\playwright\\driver\\package\\lib\\server\\dispatchers\\dispatcher.js",
+            "backend\\venv\\Lib\\site-packages\\playwright\\driver\\package\\lib\\vite\\recorder\\assets\\index-BhTWtUlo.js",
+            "backend\\venv\\Lib\\site-packages\\playwright\\driver\\package\\lib\\vite\\traceViewer\\index.Bk2uYQRV.js",
+            "backend\\venv\\Lib\\site-packages\\playwright\\driver\\package\\lib\\vite\\traceViewer\\uiMode.CQJ9SCIQ.js",
+            "backend\\venv\\Lib\\site-packages\\playwright\\driver\\package\\lib\\vite\\traceViewer\\assets\\defaultSettingsView-CJSZINFr.js",
+            "backend\\venv\\Lib\\site-packages\\win32comext\\axdebug\\debugger.py",
+            "backend\\venv\\Lib\\site-packages\\win32comext\\axscript\\client\\debug.py"
+          ]
+        }
+      ]
+    },
+    "api": {
+      "score": 40,
+      "threshold": 60,
+      "candidate_threshold": 40,
+      "status": "candidate",
+      "confidence": "low",
+      "evidence": [
+        {
+          "type": "path_glob",
+          "pattern": "**/routes/**",
+          "weight": 20,
+          "matches": [
+            "backend\\src\\api\\routes",
+            "backend\\src\\api\\routes\\__pycache__"
+          ]
+        },
+        {
+          "type": "path_glob",
+          "pattern": "**/proto/**",
+          "weight": 20,
+          "matches": [
+            "backend\\venv\\Lib\\site-packages\\qdrant_client\\proto"
+          ]
+        }
+      ]
+    },
+    "plugins": {
+      "score": 40,
+      "threshold": 60,
+      "candidate_threshold": 40,
+      "status": "candidate",
+      "confidence": "low",
+      "evidence": [
+        {
+          "type": "path_glob",
+          "pattern": "**/hooks/**",
+          "weight": 20,
+          "matches": [
+            "frontend\\src\\hooks"
+          ]
+        },
+        {
+          "type": "content_regex",
+          "pattern": "plugin|extension point|hook",
+          "weight": 20,
+          "matches": [
+            "CLAUDE.md",
+            "DOCS.md",
+            "README.md",
+            ".agent\\skills\\codewiki-generator\\SKILL.md",
+            ".agent\\skills\\codewiki-generator\\assets\\vitepress\\package.json",
+            ".agent\\skills\\codewiki-generator\\references\\doc-templates.md",
+            ".agent\\skills\\codewiki-generator\\references\\evidence-rules.json",
+            ".agent\\skills\\codewiki-generator\\references\\structure-and-heuristics.md",
+            ".agent\\skills\\codewiki-generator\\scripts\\codewiki_analyze.py",
+            ".agent\\skills\\codewiki-generator\\scripts\\codewiki_bootstrap.py"
+          ]
+        }
+      ]
+    },
+    "build-and-release": {
+      "score": 0,
+      "threshold": 50,
+      "candidate_threshold": 30,
+      "status": "excluded",
+      "confidence": "low",
+      "evidence": []
+    },
+    "data": {
+      "score": 50,
+      "threshold": 60,
+      "candidate_threshold": 40,
+      "status": "candidate",
+      "confidence": "low",
+      "evidence": [
+        {
+          "type": "path_glob",
+          "pattern": "**/migrations/**",
+          "weight": 30,
+          "matches": [
+            "backend\\migrations",
+            "backend\\migrations\\versions"
+          ]
+        },
+        {
+          "type": "path_glob",
+          "pattern": "**/models/**",
+          "weight": 20,
+          "matches": [
+            "backend\\venv\\Lib\\site-packages\\pip\\_internal\\models",
+            "backend\\venv\\Lib\\site-packages\\pip\\_internal\\models\\__pycache__",
+            "backend\\venv\\Lib\\site-packages\\qdrant_client\\models",
+            "backend\\venv\\Lib\\site-packages\\qdrant_client\\models\\__pycache__",
+            "backend\\venv\\Lib\\site-packages\\qdrant_client\\http\\models",
+            "backend\\venv\\Lib\\site-packages\\qdrant_client\\http\\models\\__pycache__",
+            "backend\\venv\\Lib\\site-packages\\sentence_transformers\\models",
+            "backend\\venv\\Lib\\site-packages\\sentence_transformers\\models\\tokenizer",
+            "backend\\venv\\Lib\\site-packages\\sentence_transformers\\models\\tokenizer\\__pycache__",
+            "backend\\venv\\Lib\\site-packages\\sentence_transformers\\models\\__pycache__"
+          ]
+        }
+      ]
+    },
+    "security": {
+      "score": 50,
+      "threshold": 60,
+      "candidate_threshold": 40,
+      "status": "candidate",
+      "confidence": "low",
+      "evidence": [
+        {
+          "type": "content_regex",
+          "pattern": "jwt|oauth|rbac|authz|openid",
+          "weight": 30,
+          "matches": [
+            "DEPLOYMENT.md",
+            "DOCS.md",
+            "README.md",
+            ".agent\\skills\\codewiki-generator\\references\\doc-templates.md",
+            ".agent\\skills\\codewiki-generator\\references\\evidence-rules.json",
+            ".agent\\skills\\codewiki-generator\\references\\structure-and-heuristics.md",
+            ".agent\\skills\\codewiki-generator\\scripts\\codewiki_analyze.py",
+            ".agent\\skills\\codewiki-generator\\scripts\\codewiki_bootstrap.py",
+            "backend\\README.md",
+            "backend\\src\\api\\routes\\auth.py"
+          ]
+        },
+        {
+          "type": "path_glob",
+          "pattern": "**/auth/**",
+          "weight": 20,
+          "matches": [
+            "backend\\src\\auth",
+            "backend\\venv\\Lib\\site-packages\\qdrant_client\\auth",
+            "backend\\venv\\Lib\\site-packages\\qdrant_client\\auth\\__pycache__",
+            "frontend\\src\\app\\auth",
+            "frontend\\src\\app\\auth\\forgot-password",
+            "frontend\\src\\app\\auth\\reset-password",
+            "frontend\\src\\app\\auth\\verify"
+          ]
+        }
+      ]
+    },
+    "observability": {
+      "score": 50,
+      "threshold": 60,
+      "candidate_threshold": 40,
+      "status": "candidate",
+      "confidence": "low",
+      "evidence": [
+        {
+          "type": "content_regex",
+          "pattern": "opentelemetry|otel|tracing|metrics|prometheus",
+          "weight": 30,
+          "matches": [
+            "DEPLOYMENT.md",
+            ".agent\\skills\\codewiki-generator\\references\\doc-templates.md",
+            ".agent\\skills\\codewiki-generator\\references\\evidence-rules.json",
+            ".agent\\skills\\codewiki-generator\\references\\structure-and-heuristics.md",
+            ".agent\\skills\\codewiki-generator\\scripts\\codewiki_analyze.py",
+            ".agent\\skills\\codewiki-generator\\scripts\\codewiki_bootstrap.py",
+            "backend\\CLAUDE.md",
+            "backend\\docs\\dataflow.md",
+            "backend\\docs\\system_design.md",
+            "backend\\src\\core\\models.py"
+          ]
+        },
+        {
+          "type": "content_regex",
+          "pattern": "logger|logrus|zap|slog",
+          "weight": 20,
+          "matches": [
+            ".agent\\skills\\codewiki-generator\\references\\evidence-rules.json",
+            "backend\\CLAUDE.md",
+            "backend\\docs\\business_logic.md",
+            "backend\\scripts\\test_ingestion_manual.py",
+            "backend\\scripts\\test_phase_1_2.py",
+            "backend\\scripts\\test_phase_3.py",
+            "backend\\scripts\\test_phase_4.py",
+            "backend\\src\\adapters\\llm.py",
+            "backend\\src\\api\\main.py",
+            "backend\\src\\api\\routes\\auth.py"
+          ]
+        }
+      ]
+    },
+    "performance": {
+      "score": 50,
+      "threshold": 50,
+      "candidate_threshold": 30,
+      "status": "included",
+      "confidence": "low",
+      "evidence": [
+        {
+          "type": "content_regex",
+          "pattern": "benchmark|profiling|perf|latency",
+          "weight": 25,
+          "matches": [
+            "CLAUDE.md",
+            "DEPLOYMENT.md",
+            ".agent\\skills\\codewiki-generator\\references\\doc-templates.md",
+            ".agent\\skills\\codewiki-generator\\references\\evidence-rules.json",
+            ".agent\\skills\\codewiki-generator\\references\\structure-and-heuristics.md",
+            ".agent\\skills\\codewiki-generator\\scripts\\codewiki_analyze.py",
+            ".agent\\skills\\codewiki-generator\\scripts\\codewiki_bootstrap.py",
+            "backend\\LOCAL_DEV.md",
+            "backend\\docs\\dataflow.md",
+            "backend\\docs\\erd.md"
+          ]
+        },
+        {
+          "type": "path_glob",
+          "pattern": "**/benchmarks/**",
+          "weight": 25,
+          "matches": [
+            "backend\\venv\\Lib\\site-packages\\sympy\\benchmarks",
+            "backend\\venv\\Lib\\site-packages\\sympy\\benchmarks\\__pycache__",
+            "backend\\venv\\Lib\\site-packages\\sympy\\core\\benchmarks",
+            "backend\\venv\\Lib\\site-packages\\sympy\\core\\benchmarks\\__pycache__",
+            "backend\\venv\\Lib\\site-packages\\sympy\\functions\\elementary\\benchmarks",
+            "backend\\venv\\Lib\\site-packages\\sympy\\functions\\elementary\\benchmarks\\__pycache__",
+            "backend\\venv\\Lib\\site-packages\\sympy\\functions\\special\\benchmarks",
+            "backend\\venv\\Lib\\site-packages\\sympy\\functions\\special\\benchmarks\\__pycache__",
+            "backend\\venv\\Lib\\site-packages\\sympy\\integrals\\benchmarks",
+            "backend\\venv\\Lib\\site-packages\\sympy\\integrals\\benchmarks\\__pycache__"
+          ]
+        }
+      ]
+    },
+    "integrations": {
+      "score": 30,
+      "threshold": 50,
+      "candidate_threshold": 30,
+      "status": "candidate",
+      "confidence": "low",
+      "evidence": [
+        {
+          "type": "path_glob",
+          "pattern": "**/integrations/**",
+          "weight": 30,
+          "matches": [
+            "backend\\venv\\Lib\\site-packages\\transformers\\integrations",
+            "backend\\venv\\Lib\\site-packages\\transformers\\integrations\\__pycache__"
+          ]
+        }
+      ]
+    },
+    "troubleshooting": {
+      "score": 20,
+      "threshold": 40,
+      "candidate_threshold": 20,
+      "status": "candidate",
+      "confidence": "low",
+      "evidence": [
+        {
+          "type": "content_regex",
+          "pattern": "error code|panic|exception",
+          "weight": 20,
+          "matches": [
+            ".agent\\skills\\codewiki-generator\\references\\evidence-rules.json",
+            "backend\\CLAUDE.md",
+            "backend\\docs\\business_logic.md",
+            "backend\\scripts\\test_api.py",
+            "backend\\scripts\\test_full_pipeline.py",
+            "backend\\scripts\\test_indexing_manual.py",
+            "backend\\scripts\\test_ingestion_manual.py",
+            "backend\\scripts\\test_mongodb.py",
+            "backend\\scripts\\test_multilingual_conversation.py",
+            "backend\\scripts\\test_phase_1_2.py"
+          ]
+        }
+      ]
+    },
+    "glossary": {
+      "score": 15,
+      "threshold": 30,
+      "candidate_threshold": 10,
+      "status": "candidate",
+      "confidence": "low",
+      "evidence": [
+        {
+          "type": "content_regex",
+          "pattern": "domain model|entity|aggregate",
+          "weight": 15,
+          "matches": [
+            "CLAUDE.md",
+            "DOCS.md",
+            ".agent\\skills\\codewiki-generator\\references\\evidence-rules.json",
+            ".agent\\skills\\codewiki-generator\\scripts\\codewiki_analyze.py",
+            "backend\\docs\\erd.md",
+            "backend\\docs\\system_design.md",
+            "backend\\src\\core\\prompts.py",
+            "backend\\src\\research\\synthesis\\gap_miner.py",
+            "backend\\src\\research\\synthesis\\grounded_writer.py",
+            "backend\\venv\\Lib\\site-packages\\sgmllib.py"
+          ]
+        }
+      ]
+    }
+  },
+  "pages": [
+    {
+      "path": "overview.md",
+      "title": "Overview",
+      "template": "overview",
+      "status": "required",
+      "module": "core"
+    },
+    {
+      "path": "getting-started/quickstart.md",
+      "title": "Quickstart",
+      "template": "quickstart",
+      "status": "required",
+      "module": "core"
+    },
+    {
+      "path": "architecture/overview.md",
+      "title": "Architecture Overview",
+      "template": "architecture",
+      "status": "required",
+      "module": "core"
+    },
+    {
+      "path": "core-components/overview.md",
+      "title": "Core Components Overview",
+      "template": "components",
+      "status": "required",
+      "module": "core"
+    },
+    {
+      "path": "development/overview.md",
+      "title": "Development Overview",
+      "template": "development",
+      "status": "required",
+      "module": "core"
+    },
+    {
+      "path": "api-reference/overview.md",
+      "title": "API Overview",
+      "template": "api",
+      "status": "candidate",
+      "module": "api"
+    },
+    {
+      "path": "plugins/overview.md",
+      "title": "Plugins Overview",
+      "template": "plugins",
+      "status": "candidate",
+      "module": "plugins"
+    },
+    {
+      "path": "data/domain-model.md",
+      "title": "Domain Model",
+      "template": "domain",
+      "status": "candidate",
+      "module": "data"
+    },
+    {
+      "path": "data/storage-layout.md",
+      "title": "Storage Layout",
+      "template": "storage",
+      "status": "candidate",
+      "module": "data"
+    },
+    {
+      "path": "security/auth-authz.md",
+      "title": "Auth & Authz",
+      "template": "auth",
+      "status": "candidate",
+      "module": "security"
+    },
+    {
+      "path": "security/threat-model.md",
+      "title": "Threat Model",
+      "template": "threat",
+      "status": "candidate",
+      "module": "security"
+    },
+    {
+      "path": "observability/logging-metrics-tracing.md",
+      "title": "Observability",
+      "template": "observability",
+      "status": "candidate",
+      "module": "observability"
+    },
+    {
+      "path": "observability/runbook.md",
+      "title": "Runbook",
+      "template": "runbook",
+      "status": "candidate",
+      "module": "observability"
+    },
+    {
+      "path": "performance/bottlenecks.md",
+      "title": "Bottlenecks",
+      "template": "bottlenecks",
+      "status": "included",
+      "module": "performance"
+    },
+    {
+      "path": "performance/scaling-strategy.md",
+      "title": "Scaling Strategy",
+      "template": "scaling",
+      "status": "included",
+      "module": "performance"
+    },
+    {
+      "path": "integrations/external-services.md",
+      "title": "External Services",
+      "template": "integrations",
+      "status": "candidate",
+      "module": "integrations"
+    },
+    {
+      "path": "troubleshooting/common-issues.md",
+      "title": "Common Issues",
+      "template": "troubleshooting",
+      "status": "candidate",
+      "module": "troubleshooting"
+    },
+    {
+      "path": "glossary.md",
+      "title": "Glossary",
+      "template": "glossary",
+      "status": "candidate",
+      "module": "glossary"
+    }
+  ]
+}
